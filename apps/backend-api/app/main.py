@@ -1,11 +1,13 @@
 """
 Main Application Entry Point
 ---------------------------
-Creates and configures the FastAPI app, including router registration.
+Creates and configures the FastAPI app, including router registration for
+VIN interpretation and cohort brief endpoints.
 """
 
 from fastapi import FastAPI
 from app.routers.vin import VinRouter
+from app.routers.cohort_brief_router import CohortBriefRouter
 
 def create_app() -> FastAPI:
     """
@@ -19,11 +21,17 @@ def create_app() -> FastAPI:
         description="Multi-agent GenAI backend for predictive vehicle maintenance.",
         version="1.0.0"
     )
-    # Register VIN endpoints using the OOP router
+    # Register VIN endpoints
     app.include_router(
         VinRouter().router, 
         prefix="/vin", 
         tags=["VIN"]
+    )
+    # Register Cohort Brief endpoints
+    app.include_router(
+        CohortBriefRouter().router,
+        prefix="/cohort",
+        tags=["Cohort"]
     )
     return app
 
