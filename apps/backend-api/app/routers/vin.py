@@ -1,42 +1,29 @@
 """
-VIN Router
-----------
-Exposes API endpoints for VIN predictive interpretation,
-using clean object-oriented routing and dependency injection.
+Defines request and response models for VIN interpretation endpoints.
 """
 
-from fastapi import APIRouter
-from app.models.vin import VinRequest, VinResponse
-from app.services.genai_interpreter import GenAIInterpreterService
+from pydantic import BaseModel, Field
 
-class VinRouter:
+
+class VinRequest(BaseModel):
     """
-    VIN Router
-
-    Handles all VIN-related API endpoints and integrates with GenAI interpreter services.
+    Represents a request payload to interpret a specific vehicle VIN.
     """
-    def __init__(self):
-        """
-        Initialize the router and attach routes.
-        """
-        self.router = APIRouter()
-        self.interpreter = GenAIInterpreterService()
-        self.router.add_api_route(
-            "/", 
-            self.interpret_vin, 
-            methods=["POST"], 
-            response_model=VinResponse,
-            summary="Interpret predictive signals for a VIN and return narrative and action pack."
-        )
+    vin: str = Field(..., description="Vehicle Identification Number for analysis.")
 
-    def interpret_vin(self, request: VinRequest) -> VinResponse:
-        """
-        API endpoint: Interpret predictive signals for a given VIN.
 
-        Args:
-            request (VinRequest): The request payload containing VIN.
+class ActionPack(BaseModel):
+    """
+    Contains the operational recommendations and confidence for a vehicle.
+    """
+    recommendation: str = Field(..., description="Operational recommendation for the vehicle.")
+    confidence: str = Field(..., description="Confidence level in the recommendation.")
 
-        Returns:
-            VinResponse: The interpreted summary and recommended actions for the VIN.
-        """
-        return self.interpreter.interpret_vin(request.vin)
+
+class VinResponse(BaseModel):
+    """
+    Full response containing the interpreted summary and recommended actions for a VIN.
+    """
+    vin: str = Field(..., description="Vehicle Identification Number analyzed.")
+    summary: str = Field(..., description="Natural-language summary of predictive insights for this VIN.")
+    action_pack: ActionPack = Field(..., description="Recommended operational actions and confidence for this VIN.")
