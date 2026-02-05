@@ -221,7 +221,7 @@ genai-predictive-platform/
 
 #  **Dashboards**
 
-Experience modern, cinematic analytics and control:
+Modern analytics and control:
 
 - **Neon-themed, animated:**  
   - Critical signals and alerts pop with vibrant colors and glowing accents.
