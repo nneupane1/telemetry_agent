@@ -1,0 +1,270 @@
+openapi: 3.0.3
+info:
+  title: GenAI Predictive Interpreter API
+  description: >
+    REST API for interpreting predictive maintenance signals
+    using multi-agent GenAI workflows with full auditability.
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.example.com
+    description: Production (placeholder)
+
+tags:
+  - name: vin
+  - name: cohort
+  - name: chat
+  - name: export
+  - name: approval
+
+paths:
+
+  /vin/{vin}:
+    get:
+      tags: [vin]
+      summary: Get VIN interpretation
+      parameters:
+        - in: path
+          name: vin
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: VIN interpretation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VinInterpretation"
+
+  /cohort/{cohort_id}:
+    get:
+      tags: [cohort]
+      summary: Get cohort interpretation
+      parameters:
+        - in: path
+          name: cohort_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cohort interpretation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CohortInterpretation"
+
+  /chat:
+    post:
+      tags: [chat]
+      summary: Generate GenAI explanation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: Chat response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+
+  /export/pdf:
+    post:
+      tags: [export]
+      summary: Export interpretation as PDF
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PdfExportRequest"
+      responses:
+        "200":
+          description: PDF binary
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /approval:
+    post:
+      tags: [approval]
+      summary: Record approval decision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalRequest"
+      responses:
+        "200":
+          description: Approval record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalRecord"
+
+    get:
+      tags: [approval]
+      summary: List approval decisions
+      parameters:
+        - in: query
+          name: subject_type
+          schema:
+            type: string
+        - in: query
+          name: subject_id
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Approval records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApprovalRecord"
+
+components:
+  schemas:
+
+    VinInterpretation:
+      type: object
+      properties:
+        vin:
+          type: string
+        summary:
+          type: string
+        risk_level:
+          type: string
+        recommendations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Recommendation"
+        model_version:
+          type: string
+
+    Recommendation:
+      type: object
+      properties:
+        title:
+          type: string
+        rationale:
+          type: string
+        urgency:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/Evidence"
+
+    Evidence:
+      type: object
+      properties:
+        source_model:
+          type: string
+        signal_code:
+          type: string
+        signal_description:
+          type: string
+        confidence:
+          type: number
+
+    CohortInterpretation:
+      type: object
+      properties:
+        cohort_id:
+          type: string
+        summary:
+          type: string
+        metrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/CohortMetric"
+        anomalies:
+          type: array
+          items:
+            $ref: "#/components/schemas/CohortAnomaly"
+        model_version:
+          type: string
+
+    CohortMetric:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: number
+
+    CohortAnomaly:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        affected_vin_count:
+          type: number
+
+    ChatRequest:
+      type: object
+      properties:
+        message:
+          type: string
+        context:
+          type: object
+          additionalProperties: true
+
+    ChatResponse:
+      type: object
+      properties:
+        reply:
+          type: string
+
+    PdfExportRequest:
+      type: object
+      properties:
+        subject_type:
+          type: string
+          enum: [vin, cohort]
+        subject_id:
+          type: string
+
+    ApprovalRequest:
+      type: object
+      properties:
+        subject_type:
+          type: string
+        subject_id:
+          type: string
+        decision:
+          type: string
+        comment:
+          type: string
+        decided_by:
+          type: string
+
+    ApprovalRecord:
+      type: object
+      properties:
+        subject_type:
+          type: string
+        subject_id:
+          type: string
+        decision:
+          type: string
+        comment:
+          type: string
+        decided_by:
+          type: string
+        timestamp:
+          type: string
