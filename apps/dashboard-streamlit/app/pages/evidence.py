@@ -1,13 +1,17 @@
 """
 Evidence Review Page.
 
-Displays predictive signals and confidence levels
-supporting GenAI interpretations for a selected VIN.
+Fetches and displays real predictive evidence for the
+currently selected VIN using the backend API.
 """
 
 from __future__ import annotations
 
 import streamlit as st
+
+from app.services.api_client import fetch_vin_interpretation
+from app.components.EvidenceViewer import render_evidence_viewer
+
 
 # ------------------------------------------------------------
 # Page header
@@ -39,52 +43,36 @@ st.markdown(
 )
 
 # ------------------------------------------------------------
-# Placeholder evidence data (API wiring later)
+# Fetch interpretation
 # ------------------------------------------------------------
 
-evidence = [
-    {
-        "source": "Machine Health",
-        "signal_code": "HI-4302",
-        "description": "Fuel pressure instability detected",
-        "confidence": 0.91,
-    },
-    {
-        "source": "Maintenance Prediction",
-        "signal_code": "MP-1107",
-        "description": "Elevated maintenance probability",
-        "confidence": 0.78,
-    },
-    {
-        "source": "Failure Impact Model",
-        "signal_code": "FIM-22",
-        "description": "Fuel pump failure impact elevated",
-        "confidence": 0.83,
-    },
-]
+with st.spinner("Loading evidence…"):
+    try:
+        interpretation = fetch_vin_interpretation(vin)
+    except Exception as exc:
+        st.error(f"Failed to load evidence: {exc}")
+        st.stop()
 
 # ------------------------------------------------------------
-# Evidence rendering
+# Extract evidence safely
 # ------------------------------------------------------------
 
-for ev in evidence:
-    st.markdown("<div class='panel'>", unsafe_allow_html=True)
+evidence = []
+for rec in interpretation.get("recommendations", []):
+    for ev in rec.get("evidence", []):
+        evidence.append({
+            "source_model": ev.get("source_model", "Unknown"),
+            "signal_code": ev.get("signal_code"),
+            "description": ev.get("signal_description"),
+            "confidence": ev.get("confidence", 0.0),
+            "observed_at": ev.get("observed_at"),
+        })
 
-    col1, col2 = st.columns([3, 1])
+# ------------------------------------------------------------
+# Render evidence
+# ------------------------------------------------------------
 
-    with col1:
-        st.markdown(
-            f"""
-            <strong>{ev['signal_code']}</strong> — {ev['description']}  
-            <br/><span class='muted'>Source: {ev['source']}</span>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with col2:
-        st.metric(
-            "Confidence",
-            f"{int(ev['confidence'] * 100)}%",
-        )
-
-    st.markdown("</div>", unsafe_allow_html=True)
+render_evidence_viewer(
+    evidence=evidence,
+    title="Predictive Evidence",
+)
