@@ -1,4 +1,5 @@
 import { useRouter } from "next/router"
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 
 import NeonNavbar from "../../components/NeonNavbar"
@@ -7,28 +8,32 @@ import TrendChart from "../../components/TrendChart"
 import FimPieChart from "../../components/FimPieChart"
 
 import { staggerContainer, staggerItem } from "../../theme/animations"
+import {
+  fetchCohortInterpretation,
+  CohortInterpretation,
+} from "../../services/apiClient"
 
 export default function CohortDetailPage() {
   const router = useRouter()
   const { cohort } = router.query
 
-  // Demo placeholder data (API wiring comes next)
-  const cohortHealth = 61
+  const [data, setData] = useState<CohortInterpretation | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const trendData = [
-    { timestamp: "Week 1", value: 68 },
-    { timestamp: "Week 2", value: 66 },
-    { timestamp: "Week 3", value: 63, isAnomaly: true },
-    { timestamp: "Week 4", value: 61 },
-  ]
+  useEffect(() => {
+    if (!cohort || typeof cohort !== "string") return
 
-  const fimData = [
-    { name: "Fuel System", value: 42 },
-    { name: "Cooling", value: 21 },
-    { name: "Electrical", value: 17 },
-    { name: "Sensors", value: 12 },
-    { name: "Other", value: 8 },
-  ]
+    setLoading(true)
+    setError(null)
+
+    fetchCohortInterpretation(cohort)
+      .then(setData)
+      .catch(() =>
+        setError("Failed to load cohort interpretation.")
+      )
+      .finally(() => setLoading(false))
+  }, [cohort])
 
   return (
     <>
@@ -53,65 +58,90 @@ export default function CohortDetailPage() {
           </p>
         </motion.section>
 
-        {/* KPIs */}
-        <motion.section
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
-        >
-          <motion.div variants={staggerItem}>
-            <HiGauge value={cohortHealth} />
-          </motion.div>
+        {/* Loading / Error */}
+        {loading && (
+          <div className="panel p-6 text-sm text-text-secondary">
+            Loading cohort interpretation…
+          </div>
+        )}
 
-          <motion.div
-            variants={staggerItem}
-            className="md:col-span-2"
-          >
-            <TrendChart
-              title="Cohort Health Trend"
-              data={trendData}
-            />
-          </motion.div>
-        </motion.section>
+        {error && (
+          <div className="panel p-6 text-sm text-danger">
+            {error}
+          </div>
+        )}
 
-        {/* Distribution + Narrative */}
-        <motion.section
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
-        >
-          <motion.div variants={staggerItem}>
-            <FimPieChart
-              title="Dominant Failure Drivers"
-              data={fimData}
-            />
-          </motion.div>
+        {/* Content */}
+        {data && (
+          <>
+            {/* KPIs */}
+            <motion.section
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="grid grid-cols-1 md:grid-cols-3 gap-6"
+            >
+              <motion.div variants={staggerItem}>
+                <HiGauge
+                  value={
+                    data.risk_distribution?.LOW
+                      ? 100 - data.risk_distribution.HIGH * 2
+                      : 60
+                  }
+                />
+              </motion.div>
 
-          <motion.div
-            variants={staggerItem}
-            className="panel panel-glow p-6 space-y-4"
-          >
-            <h3 className="text-sm tracking-wide text-text-secondary">
-              Cohort Interpretation
-            </h3>
+              <motion.div
+                variants={staggerItem}
+                className="md:col-span-2"
+              >
+                <TrendChart
+                  title="Cohort Health Trend"
+                  data={[]} // trend endpoint can plug here
+                />
+              </motion.div>
+            </motion.section>
 
-            <p className="text-sm leading-relaxed">
-              This cohort shows a gradual degradation trend driven
-              primarily by fuel system–related signals. While overall
-              risk remains elevated rather than critical, the
-              concentration of anomalies suggests targeted preventive
-              maintenance could significantly reduce downstream impact.
-            </p>
+            {/* Distribution + Narrative */}
+            <motion.section
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            >
+              <motion.div variants={staggerItem}>
+                <FimPieChart
+                  title="Dominant Failure Drivers"
+                  data={
+                    data.metrics.map((m) => ({
+                      name: m.name,
+                      value: m.value,
+                    })) ?? []
+                  }
+                />
+              </motion.div>
 
-            <div className="divider" />
+              <motion.div
+                variants={staggerItem}
+                className="panel panel-glow p-6 space-y-4"
+              >
+                <h3 className="text-sm tracking-wide text-text-secondary">
+                  Cohort Interpretation
+                </h3>
 
-            <p className="text-xs text-text-muted">
-              Vehicles affected: 184 · High-risk subset: 27
-            </p>
-          </motion.div>
-        </motion.section>
+                <p className="text-sm leading-relaxed">
+                  {data.summary}
+                </p>
+
+                <div className="divider" />
+
+                <p className="text-xs text-text-muted">
+                  Model version: {data.model_version}
+                </p>
+              </motion.div>
+            </motion.section>
+          </>
+        )}
       </main>
     </>
   )
