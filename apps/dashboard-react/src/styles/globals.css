@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --------------------------------------------------
+   Base resets & typography
+-------------------------------------------------- */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: theme(colors.bg.primary);
+    color: theme(colors.text.primary);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  ::selection {
+    background: rgba(157, 123, 255, 0.35);
+  }
+}
+
+/* --------------------------------------------------
+   Reusable cinematic utilities
+-------------------------------------------------- */
+@layer utilities {
+  /* Neon glow text */
+  .text-neon-cyan {
+    color: theme(colors.neon.cyan);
+    text-shadow:
+      0 0 6px rgba(60, 242, 255, 0.6),
+      0 0 18px rgba(60, 242, 255, 0.35);
+  }
+
+  .text-neon-purple {
+    color: theme(colors.neon.purple);
+    text-shadow:
+      0 0 6px rgba(157, 123, 255, 0.6),
+      0 0 18px rgba(157, 123, 255, 0.35);
+  }
+
+  /* Neon bordered panels */
+  .panel {
+    background-color: theme(colors.bg.panel);
+    border: 1px solid rgba(157, 123, 255, 0.15);
+    border-radius: 0.75rem;
+    backdrop-filter: blur(6px);
+  }
+
+  .panel-glow {
+    box-shadow: theme(boxShadow.neonPurple);
+  }
+
+  /* Subtle hover lift */
+  .hover-lift {
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-4px);
+  }
+
+  /* Glassy divider */
+  .divider {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(157, 123, 255, 0.4),
+      transparent
+    );
+  }
+}
+
+/* --------------------------------------------------
+   Scrollbar (minimal, cinematic)
+-------------------------------------------------- */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #05070d;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(157, 123, 255, 0.35);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(157, 123, 255, 0.55);
+}
