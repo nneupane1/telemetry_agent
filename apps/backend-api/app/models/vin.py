@@ -1,43 +1,59 @@
-
 """
-VIN Router
-----------
-Exposes API endpoints for VIN predictive interpretation,
-using clean object-oriented routing and dependency injection.
+VIN-level domain models.
+Authoritative schema for GenAI interpretation, APIs, and evidence trails.
 """
 
-from fastapi import APIRouter
-from app.models.vin import VinRequest, VinResponse
-from app.services.genai_interpreter import GenAIInterpreterService
+from __future__ import annotations
 
-class VinRouter:
+from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, Field, conint, confloat
+
+
+class HealthIndicator(BaseModel):
     """
-    VIN Router
-
-    Handles all VIN-related API endpoints and integrates with GenAI interpreter services.
+    Single health indicator signal (MH / MP / FIM).
     """
-    def __init__(self):
-        """
-        Initialize the router and attach routes.
-        """
-        self.router = APIRouter()
-        self.interpreter = GenAIInterpreterService()
-        self.router.add_api_route(
-            "/", 
-            self.interpret_vin, 
-            methods=["POST"], 
-            response_model=VinResponse,
-            summary="Interpret predictive signals for a VIN and return narrative and action pack."
-        )
 
-    def interpret_vin(self, request: VinRequest) -> VinResponse:
-        """
-        API endpoint: Interpret predictive signals for a given VIN.
+    code: str = Field(..., description="Canonical HI code (e.g. HI-4302)")
+    family: str = Field(..., description="HI family or subsystem")
+    score: confloat(ge=0.0, le=1.0)
+    confidence: confloat(ge=0.0, le=1.0)
+    severity: conint(ge=0, le=5)
+    description: Optional[str] = None
 
-        Args:
-            request (VinRequest): The request payload containing VIN.
+    class Config:
+        frozen = True
 
-        Returns:
-            VinResponse: The interpreted summary and recommended actions for the VIN.
-        """
-        return self.interpreter.interpret_vin(request.vin)
+
+class VinSnapshot(BaseModel):
+    """
+    Point-in-time VIN snapshot used by agents.
+    """
+
+    vin: str = Field(..., min_length=5)
+    timestamp: datetime
+
+    machine_health: List[HealthIndicator]
+    maintenance_predictions: List[HealthIndicator]
+    failure_impacts: List[HealthIndicator]
+
+    class Config:
+        frozen = True
+
+
+class VinNarrative(BaseModel):
+    """
+    Final GenAI-generated VIN explanation.
+    """
+
+    vin: str
+    generated_at: datetime
+    summary: str
+    key_risks: List[str]
+    recommended_actions: List[str]
+    evidence_refs: List[str]
+
+    class Config:
+        frozen = True
