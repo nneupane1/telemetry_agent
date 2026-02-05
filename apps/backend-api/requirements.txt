@@ -1,1 +1,37 @@
-# backend-api requirements placeholder
+# -------------------------------
+# Core API & runtime
+# -------------------------------
+fastapi==0.110.0
+uvicorn[standard]==0.27.1
+pydantic==1.10.13
+
+# -------------------------------
+# GenAI / agent orchestration
+# -------------------------------
+langgraph==0.0.40
+langchain==0.1.14
+
+# -------------------------------
+# Databricks / data access
+# -------------------------------
+databricks-sql-connector==3.1.1
+
+# -------------------------------
+# PDF generation
+# -------------------------------
+reportlab==4.1.0
+
+# -------------------------------
+# Email (stdlib smtplib used)
+# -------------------------------
+# no external dependency needed
+
+# -------------------------------
+# Utilities
+# -------------------------------
+python-dotenv==1.0.1
+
+# -------------------------------
+# Testing
+# -------------------------------
+pytest==8.1.1
