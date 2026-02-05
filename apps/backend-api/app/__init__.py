@@ -1,9 +1,10 @@
 """
-App Package Initializer
------------------------
-Marks this directory as a Python package and
-prepares submodules for import if needed.
-"""
+GenAI Predictive Interpreter Backend Application.
 
-# You may optionally add package-level imports or setup logic here.
-# For now, this file is intentionally left empty.
+This package contains the FastAPI backend responsible for:
+- orchestrating GenAI agents
+- interpreting predictive maintenance signals
+- exposing stable, auditable APIs
+
+No side effects should occur at import time.
+"""
