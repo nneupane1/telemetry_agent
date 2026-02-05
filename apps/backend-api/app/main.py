@@ -1,39 +1,75 @@
 """
-Main Application Entry Point
----------------------------
-Creates and configures the FastAPI app, including router registration for
-VIN interpretation and cohort brief endpoints.
+Application entrypoint.
+
+Initializes the FastAPI application, registers routers,
+and configures lifecycle hooks.
 """
 
+from __future__ import annotations
+
 from fastapi import FastAPI
-from app.routers.vin import VinRouter
-from app.routers.cohort_brief_router import CohortBriefRouter
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.routers import vin, cohort, action_pack
+from app.utils.config import load_config
+from app.utils.logger import get_logger, log_event
+
+logger = get_logger(__name__)
+
 
 def create_app() -> FastAPI:
     """
-    Factory function to initialize and configure the FastAPI app.
-    
-    Returns:
-        FastAPI: The configured FastAPI application instance.
+    Create and configure the FastAPI application.
     """
+
+    config = load_config()
+
     app = FastAPI(
-        title="GenAI Predictive Interpreter API",
-        description="Multi-agent GenAI backend for predictive vehicle maintenance.",
-        version="1.0.0"
+        title="GenAI Predictive Interpreter Platform",
+        version="1.0.0",
+        description="Automated GenAI interpretation of predictive maintenance signals",
     )
-    # Register VIN endpoints
-    app.include_router(
-        VinRouter().router, 
-        prefix="/vin", 
-        tags=["VIN"]
+
+    # -----------------------------------------------------------------
+    # Middleware
+    # -----------------------------------------------------------------
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # tighten in prod
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
-    # Register Cohort Brief endpoints
-    app.include_router(
-        CohortBriefRouter().router,
-        prefix="/cohort",
-        tags=["Cohort"]
-    )
+
+    # -----------------------------------------------------------------
+    # Routers
+    # -----------------------------------------------------------------
+
+    app.include_router(vin.router)
+    app.include_router(cohort.router)
+    app.include_router(action_pack.router)
+
+    # -----------------------------------------------------------------
+    # Lifecycle hooks
+    # -----------------------------------------------------------------
+
+    @app.on_event("startup")
+    def on_startup() -> None:
+        log_event(
+            logger,
+            "Application startup",
+            extra={"env": config.env},
+        )
+
+    @app.on_event("shutdown")
+    def on_shutdown() -> None:
+        log_event(
+            logger,
+            "Application shutdown",
+        )
+
     return app
 
-# Application instance for ASGI servers
+
 app = create_app()
