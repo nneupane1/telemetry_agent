@@ -219,15 +219,15 @@ genai-predictive-platform/
 
 ---
 
-#  **Dazzling Dashboards**
+#  **Dashboards**
 
 Experience modern, cinematic analytics and control:
 
-- **Neon-themed, animated, and cinematic:**  
+- **Neon-themed, animated:**  
   - Critical signals and alerts pop with vibrant colors and glowing accents.
   - Outlier events and cohort anomalies pulse with dynamic visual effects for instant recognition.
 
-- **Fully interactive:**  
+- **Interactive:**  
   - Intuitive VIN explorer with search, filtering, and drill-down.
   - Live trend analytics, Health Index gauges, Failure Impact pie charts, and Action Pack viewers.
   - Integrated **GenAI chatbot** lets users interact conversationally—ask questions, request explanations, and more.
