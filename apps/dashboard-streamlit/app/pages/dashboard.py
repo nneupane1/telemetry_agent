@@ -1,13 +1,21 @@
 """
 Operator Dashboard Page.
 
-Provides a fleet snapshot and fast VIN lookup
-for control room operators.
+Live fleet snapshot with VIN lookup and cohort triage,
+wired to the FastAPI backend.
 """
 
 from __future__ import annotations
 
 import streamlit as st
+
+from app.services.api_client import (
+    fetch_vin_interpretation,
+    fetch_cohort_interpretation,
+)
+from app.components.VinLookup import render_vin_lookup
+from app.components.CohortExplorer import render_cohort_explorer
+
 
 # ------------------------------------------------------------
 # Page header
@@ -19,57 +27,79 @@ st.markdown(
 )
 
 st.markdown(
-    "<p class='muted'>Quick overview of fleet risk and VIN access.</p>",
+    "<p class='muted'>Live operational overview of fleet risk.</p>",
     unsafe_allow_html=True,
 )
 
 # ------------------------------------------------------------
-# Fleet KPIs (placeholder demo values)
+# VIN Lookup (left → right operator flow)
 # ------------------------------------------------------------
 
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    st.markdown("<div class='panel'>", unsafe_allow_html=True)
-    st.metric("Fleet HI", "64", delta="-3")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-with col2:
-    st.markdown("<div class='panel'>", unsafe_allow_html=True)
-    st.metric("High Risk VINs", "27")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-with col3:
-    st.markdown("<div class='panel'>", unsafe_allow_html=True)
-    st.metric("Elevated Risk VINs", "92")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-with col4:
-    st.markdown("<div class='panel'>", unsafe_allow_html=True)
-    st.metric("Active Action Packs", "18")
-    st.markdown("</div>", unsafe_allow_html=True)
+render_vin_lookup()
 
 st.divider()
 
 # ------------------------------------------------------------
-# VIN Lookup
+# Cohort Snapshot (example cohorts, live-backed)
+# ------------------------------------------------------------
+
+# NOTE:
+# In real deployments, this list typically comes from:
+# - a predefined cohort registry
+# - or a backend endpoint (/cohort/list)
+#
+# For now, we demonstrate with known cohort IDs.
+
+cohort_ids = [
+    "EURO6-DIESEL",
+    "EURO5-DIESEL",
+    "EV-FLEET",
+]
+
+cohorts = []
+
+with st.spinner("Loading cohort snapshot…"):
+    for cid in cohort_ids:
+        try:
+            data = fetch_cohort_interpretation(cid)
+
+            cohorts.append({
+                "cohort_id": cid,
+                "description": f"Fleet cohort: {cid}",
+                "risk_level": (
+                    "HIGH"
+                    if data.get("anomalies")
+                    else "LOW"
+                ),
+                "affected_vins": sum(
+                    a.get("affected_vin_count", 0)
+                    for a in data.get("anomalies", [])
+                ),
+            })
+
+        except Exception:
+            # Fail-soft: skip unavailable cohorts
+            continue
+
+# ------------------------------------------------------------
+# Render Cohort Explorer
+# ------------------------------------------------------------
+
+render_cohort_explorer(
+    cohorts=cohorts,
+    title="Cohort Risk Overview",
+)
+
+# ------------------------------------------------------------
+# Operator guidance
 # ------------------------------------------------------------
 
 st.markdown(
-    "<h2 class='neon-title'>VIN Lookup</h2>",
+    """
+    <p class='muted'>
+    Tip: Start with a cohort to identify risk concentration,
+    then drill down into individual VINs for evidence and approval.
+    </p>
+    """,
     unsafe_allow_html=True,
 )
-
-vin_input = st.text_input(
-    "Enter VIN",
-    placeholder="e.g. WVWZZZ1KZ6W000001",
-)
-
-if vin_input:
-    st.session_state.selected_vin = vin_input.strip().upper()
-    st.success(f"Selected VIN: {st.session_state.selected_vin}")
-
-    st.markdown(
-        "<p class='muted'>Navigate to Evidence Review to inspect signals.</p>",
-        unsafe_allow_html=True,
-    )
