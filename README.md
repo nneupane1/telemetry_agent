@@ -15,9 +15,10 @@ What remains manual is interpretation at scale:
 - how to summarize fleet-level patterns without ad hoc analysis every time.
 
 This platform addresses that gap by combining:
-- deterministic agent logic,
+- schema-validated telemetry ingestion,
 - LangGraph-first orchestration,
 - optional LangChain + LLM narrative generation (OpenAI/OpenAI-compatible),
+- deterministic safety baselines,
 - API-first delivery to React and Streamlit dashboards.
 
 ## What This Project Solves
@@ -119,24 +120,80 @@ telemetry_agent/
 1. `MartLoader` pulls VIN/cohort telemetry from:
    - Unity Catalog marts when `DATA_SOURCE=databricks`, or
    - sample JSON fixtures when `DATA_SOURCE=sample`.
-2. `ReferenceLoader` merges domain dictionaries from:
+   - all rows pass schema validation before use.
+   - invalid rows are dropped and logged in non-strict mode and raise errors in strict mode.
+2. Cohort registry is backend-driven via `MartLoader.list_cohorts()` and exposed through `GET /cohort/list`.
+3. `ReferenceLoader` merges domain dictionaries from:
    - `data/reference/ref_hi_catalog.yaml`
    - `data/reference/ref_hi_family_map.yaml`
    - `data/reference/ref_confidence_map.yaml`
-3. `GraphRunner` executes orchestration stages through LangGraph:
+4. `GraphRunner` executes orchestration stages through LangGraph:
    - VIN: evidence -> summary -> recommendations -> evidence consolidation -> interpretation
    - Cohort: metrics/anomalies -> summary -> interpretation
-4. `NarrativeComposer` generates text:
+5. `NarrativeComposer` generates text:
    - via LangChain + provider endpoint when configured and available,
    - deterministic templates otherwise.
    - chat replies use a hybrid selector that scores deterministic vs LLM candidates and returns the safer/higher-scoring one.
-5. FastAPI routers return typed responses to dashboards, export, and approval flows.
+6. FastAPI routers return typed responses to dashboards, export, and approval flows.
+
+## Technology Stack
+### Backend/API
+- FastAPI + Pydantic for typed API contracts.
+- Databricks SQL connector for Unity Catalog mart queries.
+- ReportLab for PDF exports.
+
+### Orchestration and AI
+- LangGraph is the primary orchestration runtime (VIN and cohort graphs).
+- LangChain is used in `NarrativeComposer` for prompt+model pipelines.
+- `langchain-openai` binds to OpenAI or OpenAI-compatible providers.
+- Deterministic agent logic remains as an explicit safety baseline.
+
+### Frontend and Dashboard Tooling
+- Next.js + React + TypeScript for the executive/operator web app.
+- TailwindCSS for design system primitives and responsive layout.
+- Framer Motion for staged transitions and narrative reveal.
+- React Three Fiber + Drei + Three.js for cinematic telemetry scene rendering.
+- ECharts (`echarts-for-react`) for high-density charting (with selective Recharts usage).
+- Zustand for dashboard state orchestration.
+- Streamlit app provides a fast operator console path.
+
+## Frontend Experience (What It Looks Like and Does)
+- Visual direction: cinematic control-room aesthetic, neon cyan/amber accents, glass panels, aurora-like background gradients.
+- Executive pages: high-level risk posture, trend visuals, spotlight VIN/cohort, and narrative summary for leadership.
+- VIN/cohort detail pages: evidence-backed recommendations, anomaly context, export, and approvals.
+- Chat widget: bounded explainability assistant, scoped to provided VIN/cohort/fleet context.
+- Cohort selectors are now API-driven from `/cohort/list`, not hardcoded IDs.
+
+## Fallback Behavior and Activation Conditions
+### LangGraph vs deterministic orchestration
+- Default: LangGraph enabled (`FEATURE_LANGGRAPH=true`).
+- Deterministic orchestration is only allowed when `FEATURE_ALLOW_DETERMINISTIC_FALLBACK=true`.
+- Deterministic orchestration is used if:
+  - LangGraph package/runtime cannot initialize, or
+  - graph invocation fails at runtime.
+- If fallback is disabled and LangGraph is unavailable, startup/request fails fast.
+
+### LangChain/LLM vs deterministic narrative
+- LLM path is used only when:
+  - LangChain prompt runtime imports succeed,
+  - provider is valid (`openai` or `openai_compatible`),
+  - model client is available (`langchain-openai`),
+  - API key/model settings are configured.
+- Deterministic narrative is used when any of the above is missing or LLM call fails.
+
+### Chat transport (REST and WebSocket)
+- REST (`POST /chat`) is primary by default.
+- Frontend tracks REST latency:
+  - if latency breaches threshold repeatedly, client prefers WebSocket (`/chat/ws`) for subsequent requests.
+- If REST errors, client attempts WebSocket fallback.
+- If preferred WebSocket path fails, client resets preference back to REST.
 
 ## API Surface
 Backend entrypoint: `apps/backend-api/app/main.py`
 
 - `GET /health`
 - `GET /vin/{vin}`
+- `GET /cohort/list`
 - `GET /cohort/{cohort_id}`
 - `POST /action-pack/`
 - `POST /chat`
@@ -150,6 +207,7 @@ Backend entrypoint: `apps/backend-api/app/main.py`
 Use for local validation without Databricks credentials.
 - `APP_ENV=local`
 - `DATA_SOURCE=sample`
+- schema validation runs; invalid rows are dropped/logged.
 
 ### 2) Databricks Mode
 Use for real Unity Catalog marts.
@@ -160,6 +218,7 @@ Use for real Unity Catalog marts.
   - `DATABRICKS_TOKEN`
   - `DATABRICKS_CATALOG`
   - `DATABRICKS_SCHEMA`
+- in `APP_ENV=prod`, strict validation is enforced and invalid rows fail requests.
 
 ### 3) Optional LLM Mode
 Enable richer narrative generation when available.
@@ -167,6 +226,7 @@ Enable richer narrative generation when available.
 - `LLM_API_KEY` (or `OPENAI_API_KEY` legacy alias)
 - `LLM_MODEL` (default `gpt-4.1-mini`)
 - `LLM_BASE_URL` (required when `LLM_PROVIDER=openai_compatible`)
+- any vendor exposing an OpenAI-compatible chat endpoint can be used by setting `LLM_BASE_URL` + `LLM_MODEL`.
 
 LangGraph is enabled by default and treated as the core orchestration runtime.
 Use `FEATURE_ALLOW_DETERMINISTIC_FALLBACK=true` only for emergency/local compatibility.
@@ -262,6 +322,8 @@ Key variables:
   - `NEXT_PUBLIC_CHAT_REST_LATENCY_THRESHOLD_MS`
   - `NEXT_PUBLIC_CHAT_REST_BREACH_LIMIT`
   - `NEXT_PUBLIC_CHAT_WS_TIMEOUT_MS`
+
+Note: strict ingestion validation is controlled by environment mode (`APP_ENV=prod` enables strict behavior).
 
 ## Development Commands
 From repo root:

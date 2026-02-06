@@ -41,6 +41,36 @@ paths:
         "200":
           description: Cohort interpretation payload
 
+  /cohort/list:
+    get:
+      summary: List available cohorts
+      description: |
+        Returns backend-derived cohort registry entries used by dashboard selectors.
+        In sample mode, values are read from sample JSON. In databricks mode, values
+        are discovered from mart tables.
+      responses:
+        "200":
+          description: Cohort list response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cohorts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        cohort_id:
+                          type: string
+                        cohort_description:
+                          type: string
+                          nullable: true
+                      required:
+                        - cohort_id
+                required:
+                  - cohorts
+
   /action-pack/:
     post:
       summary: Build action pack
@@ -51,6 +81,7 @@ paths:
   /chat:
     post:
       summary: Explainability chat response
+      description: REST primary transport for bounded explainability chat.
       responses:
         "200":
           description: Chat reply
@@ -59,7 +90,7 @@ paths:
     get:
       summary: WebSocket chat transport (upgrade endpoint)
       description: |
-        Upgrade this endpoint to WebSocket for low-latency chat fallback.
+        Upgrade this endpoint to WebSocket for low-latency fallback.
         Client messages are JSON payloads with message/context/request_id.
       responses:
         "101":
