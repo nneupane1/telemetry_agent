@@ -1,0 +1,187 @@
+﻿{
+  "vins": [
+    {
+      "vin": "WVWZZZ1KZ6W000001",
+      "mh": [
+        {
+          "vin": "WVWZZZ1KZ6W000001",
+          "hi_code": "HI-4302",
+          "confidence": 0.91,
+          "observed_at": "2026-02-01T06:00:00Z"
+        },
+        {
+          "vin": "WVWZZZ1KZ6W000001",
+          "hi_code": "HI-5401",
+          "confidence": 0.86,
+          "observed_at": "2026-02-02T06:00:00Z"
+        }
+      ],
+      "mp": [
+        {
+          "vin": "WVWZZZ1KZ6W000001",
+          "signal_code": "MP-110",
+          "confidence": 0.83,
+          "trigger_time": "2026-02-03T10:30:00Z"
+        }
+      ],
+      "fim": [
+        {
+          "vin": "WVWZZZ1KZ6W000001",
+          "signal_code": "FIM-22",
+          "confidence": 0.88,
+          "observed_at": "2026-02-03T11:00:00Z"
+        }
+      ]
+    },
+    {
+      "vin": "WVWZZZ1KZ6W000002",
+      "mh": [
+        {
+          "vin": "WVWZZZ1KZ6W000002",
+          "hi_code": "HI-2204",
+          "confidence": 0.74,
+          "observed_at": "2026-02-02T08:00:00Z"
+        }
+      ],
+      "mp": [
+        {
+          "vin": "WVWZZZ1KZ6W000002",
+          "signal_code": "MP-205",
+          "confidence": 0.71,
+          "trigger_time": "2026-02-03T09:00:00Z"
+        }
+      ],
+      "fim": [
+        {
+          "vin": "WVWZZZ1KZ6W000002",
+          "signal_code": "FIM-41",
+          "confidence": 0.69,
+          "observed_at": "2026-02-03T09:30:00Z"
+        }
+      ]
+    },
+    {
+      "vin": "WVWZZZ1KZ6W000003",
+      "mh": [
+        {
+          "vin": "WVWZZZ1KZ6W000003",
+          "hi_code": "HI-7710",
+          "confidence": 0.41,
+          "observed_at": "2026-02-02T07:10:00Z"
+        }
+      ],
+      "mp": [],
+      "fim": [
+        {
+          "vin": "WVWZZZ1KZ6W000003",
+          "signal_code": "FIM-77",
+          "confidence": 0.44,
+          "observed_at": "2026-02-03T08:30:00Z"
+        }
+      ]
+    }
+  ],
+  "cohorts": [
+    {
+      "cohort_id": "EURO6-DIESEL",
+      "metrics": [
+        {
+          "metric_name": "risk_low",
+          "metric_value": 168,
+          "unit": "count",
+          "description": "VINs currently low risk"
+        },
+        {
+          "metric_name": "risk_elevated",
+          "metric_value": 34,
+          "unit": "count",
+          "description": "VINs currently elevated risk"
+        },
+        {
+          "metric_name": "risk_high",
+          "metric_value": 12,
+          "unit": "count",
+          "description": "VINs currently high risk"
+        },
+        {
+          "metric_name": "fuel_signal_rate",
+          "metric_value": 0.37,
+          "unit": "ratio",
+          "description": "Share of VINs with fuel-family anomalies"
+        }
+      ],
+      "anomalies": [
+        {
+          "title": "Fuel anomaly concentration",
+          "description": "Fuel-family HI signals rose over the last 7 days.",
+          "affected_vin_count": 18,
+          "severity": "HIGH",
+          "related_signals": ["HI-4302", "FIM-22"]
+        },
+        {
+          "title": "SCR drift pattern",
+          "description": "SCR confidence values are trending upward.",
+          "affected_vin_count": 11,
+          "severity": "MEDIUM",
+          "related_signals": ["HI-5401", "FIM-41"]
+        }
+      ]
+    },
+    {
+      "cohort_id": "EURO5-DIESEL",
+      "metrics": [
+        {
+          "metric_name": "risk_low",
+          "metric_value": 122,
+          "unit": "count",
+          "description": "VINs currently low risk"
+        },
+        {
+          "metric_name": "risk_elevated",
+          "metric_value": 19,
+          "unit": "count",
+          "description": "VINs currently elevated risk"
+        },
+        {
+          "metric_name": "risk_high",
+          "metric_value": 4,
+          "unit": "count",
+          "description": "VINs currently high risk"
+        }
+      ],
+      "anomalies": [
+        {
+          "title": "Cooling subsystem variation",
+          "description": "Cooling-family confidence increased in a small cluster.",
+          "affected_vin_count": 6,
+          "severity": "LOW",
+          "related_signals": ["HI-7710", "FIM-77"]
+        }
+      ]
+    },
+    {
+      "cohort_id": "EV-FLEET",
+      "metrics": [
+        {
+          "metric_name": "risk_low",
+          "metric_value": 97,
+          "unit": "count",
+          "description": "VINs currently low risk"
+        },
+        {
+          "metric_name": "risk_elevated",
+          "metric_value": 5,
+          "unit": "count",
+          "description": "VINs currently elevated risk"
+        },
+        {
+          "metric_name": "risk_high",
+          "metric_value": 1,
+          "unit": "count",
+          "description": "VINs currently high risk"
+        }
+      ],
+      "anomalies": []
+    }
+  ]
+}

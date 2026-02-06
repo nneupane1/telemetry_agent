@@ -1,0 +1,17 @@
+include README.md
+include pyproject.toml
+include setup.py
+include apps/backend-api/requirements.txt
+recursive-include apps/backend-api/app/data *.yaml *.json
+
+prune apps/backend-api/app/tests
+
+prune apps/dashboard-react
+prune apps/dashboard-streamlit
+prune deployments
+prune docs
+prune scripts
+prune tests
+prune data
+
+global-exclude __pycache__ *.py[cod]

@@ -1,0 +1,25 @@
+﻿{
+  "action_pack_id": "AP-WVWZZZ1KZ6W000001",
+  "subject_type": "VIN",
+  "subject_id": "WVWZZZ1KZ6W000001",
+  "title": "Elevated Fuel and SCR Risk",
+  "executive_summary": "Predictive telemetry indicates an elevated near-term reliability risk with dominant fuel and SCR signals.",
+  "recommendations": [
+    {
+      "title": "Inspect fuel rail pressure behavior",
+      "rationale": "HI-4302 and FIM-22 exceeded high-confidence thresholds.",
+      "urgency": "HIGH",
+      "suggested_action": "Schedule controlled diagnostic inspection within 48 hours.",
+      "evidence": [
+        {
+          "source_model": "MH",
+          "signal_code": "HI-4302",
+          "signal_description": "Fuel pressure instability detected",
+          "confidence": 0.91,
+          "observed_at": "2026-02-01T06:00:00Z"
+        }
+      ]
+    }
+  ],
+  "model_version": "v1.0.0"
+}

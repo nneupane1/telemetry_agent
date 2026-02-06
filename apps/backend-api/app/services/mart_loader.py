@@ -557,6 +557,12 @@ class MartLoader:
         if path.exists():
             return path
 
+        # Package-local fallback for installed distributions.
+        package_root = Path(__file__).resolve().parents[1]
+        packaged_candidate = package_root / path_value
+        if packaged_candidate.exists():
+            return packaged_candidate
+
         repo_root = Path(__file__).resolve().parents[4]
         candidate = repo_root / path_value
         if candidate.exists():

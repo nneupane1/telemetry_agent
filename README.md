@@ -325,6 +325,38 @@ Key variables:
 
 Note: strict ingestion validation is controlled by environment mode (`APP_ENV=prod` enables strict behavior).
 
+## Python Packaging (`setup.py`)
+Backend packaging is enabled at repo root.
+Requires Python `>=3.10`.
+
+Files:
+- `setup.py`
+- `pyproject.toml`
+- `MANIFEST.in`
+
+Install backend in editable mode:
+```bash
+pip install -e .
+```
+
+Install with extras:
+```bash
+pip install -e ".[test]"
+pip install -e ".[streamlit]"
+pip install -e ".[dev]"
+```
+
+Package CLI entry points:
+- `telemetry-backend` (production-style run)
+- `telemetry-backend-dev` (auto-reload enabled)
+
+Examples:
+```bash
+telemetry-backend --host 0.0.0.0 --port 8000
+telemetry-backend-dev --port 8000
+python -m app --port 8000
+```
+
 ## Development Commands
 From repo root:
 

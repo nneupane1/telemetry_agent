@@ -1,0 +1,20 @@
+﻿HI-4302:
+  description: Fuel pressure instability detected
+HI-5401:
+  description: SCR efficiency drift detected
+HI-2204:
+  description: EGR flow deviation detected
+HI-7710:
+  description: Coolant temperature volatility
+HI-3301:
+  description: Turbo boost irregularity
+MP-110:
+  description: Short-term maintenance trigger activated
+MP-205:
+  description: Medium-horizon maintenance trigger activated
+FIM-22:
+  description: High probability of fuel system degradation
+FIM-41:
+  description: Elevated probability of SCR subsystem degradation
+FIM-77:
+  description: Elevated probability of cooling subsystem degradation

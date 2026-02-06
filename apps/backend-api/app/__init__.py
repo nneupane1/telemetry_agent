@@ -8,3 +8,5 @@ This package contains the FastAPI backend responsible for:
 
 No side effects should occur at import time.
 """
+
+__version__ = "1.1.0"
