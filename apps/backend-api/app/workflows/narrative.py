@@ -4,6 +4,7 @@ LangChain-backed narrative helpers with deterministic fallback.
 
 from __future__ import annotations
 
+import inspect
 from typing import Any, Dict, List, Optional
 
 from app.utils.config import load_config
@@ -41,7 +42,14 @@ class NarrativeComposer:
             return
 
         llm_cfg = self._config.llm
-        if llm_cfg.provider != "openai" or llm_cfg.openai is None:
+        if llm_cfg.provider == "none" or llm_cfg.openai is None:
+            return
+        if llm_cfg.provider not in {"openai", "openai_compatible"}:
+            log_event(
+                logger,
+                "Unsupported LLM provider configured, using deterministic templates",
+                extra={"provider": llm_cfg.provider},
+            )
             return
 
         try:
@@ -53,11 +61,20 @@ class NarrativeComposer:
             )
             return
 
+        model_kwargs: Dict[str, Any] = {}
+        if llm_cfg.openai.base_url:
+            init_params = inspect.signature(ChatOpenAI.__init__).parameters
+            if "base_url" in init_params:
+                model_kwargs["base_url"] = llm_cfg.openai.base_url
+            elif "openai_api_base" in init_params:
+                model_kwargs["openai_api_base"] = llm_cfg.openai.base_url
+
         model = ChatOpenAI(
             api_key=llm_cfg.openai.api_key.get_secret_value(),
             model=llm_cfg.openai.model,
             temperature=llm_cfg.openai.temperature,
             max_tokens=llm_cfg.openai.max_tokens,
+            **model_kwargs,
         )
 
         prompt = self._prompt_cls.from_messages(
@@ -211,4 +228,3 @@ class NarrativeComposer:
             f"{ev.get('signal_code')} ({int(float(ev.get('confidence', 0.0)) * 100)}%)"
             for ev in top
         )
-

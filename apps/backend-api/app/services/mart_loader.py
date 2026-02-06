@@ -143,7 +143,7 @@ class MartLoader:
         dbx = self._config.databricks
         if dbx is None:
             return table_name
-        return f"{dbx.catalog}.{dbx.schema}.{table_name}"
+        return f"{dbx.catalog}.{dbx.schema_name}.{table_name}"
 
     @staticmethod
     def _escape_literal(value: str) -> str:

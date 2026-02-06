@@ -6,11 +6,13 @@ $backend = Join-Path $root "apps\backend-api"
 $oldAppEnv = [Environment]::GetEnvironmentVariable("APP_ENV", "Process")
 $oldDataSource = [Environment]::GetEnvironmentVariable("DATA_SOURCE", "Process")
 $oldLanggraph = [Environment]::GetEnvironmentVariable("FEATURE_LANGGRAPH", "Process")
+$oldFallback = [Environment]::GetEnvironmentVariable("FEATURE_ALLOW_DETERMINISTIC_FALLBACK", "Process")
 
 try {
   [Environment]::SetEnvironmentVariable("APP_ENV", "local", "Process")
   [Environment]::SetEnvironmentVariable("DATA_SOURCE", "sample", "Process")
-  [Environment]::SetEnvironmentVariable("FEATURE_LANGGRAPH", "false", "Process")
+  [Environment]::SetEnvironmentVariable("FEATURE_LANGGRAPH", "true", "Process")
+  [Environment]::SetEnvironmentVariable("FEATURE_ALLOW_DETERMINISTIC_FALLBACK", "true", "Process")
 
   Set-Location $root
   Write-Host "Running repo tests in local test mode..." -ForegroundColor Cyan
@@ -26,6 +28,7 @@ finally {
   [Environment]::SetEnvironmentVariable("APP_ENV", $oldAppEnv, "Process")
   [Environment]::SetEnvironmentVariable("DATA_SOURCE", $oldDataSource, "Process")
   [Environment]::SetEnvironmentVariable("FEATURE_LANGGRAPH", $oldLanggraph, "Process")
+  [Environment]::SetEnvironmentVariable("FEATURE_ALLOW_DETERMINISTIC_FALLBACK", $oldFallback, "Process")
   Set-Location $root
   Write-Host "Process environment restored (ready for normal K8s workflow)." -ForegroundColor Yellow
 }

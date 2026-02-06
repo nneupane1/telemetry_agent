@@ -38,6 +38,14 @@ def main() -> None:
             f"Sample data file missing: {sample_file}"
         )
 
+    if (
+        not config.features.enable_langgraph
+        and not config.features.allow_deterministic_fallback
+    ):
+        raise RuntimeError(
+            "FEATURE_LANGGRAPH=false requires FEATURE_ALLOW_DETERMINISTIC_FALLBACK=true"
+        )
+
     log_event(
         logger,
         "Configuration verification successful",
@@ -47,6 +55,7 @@ def main() -> None:
             "reference_dir": str(reference_dir),
             "sample_file": str(sample_file),
             "langgraph_enabled": config.features.enable_langgraph,
+            "allow_deterministic_fallback": config.features.allow_deterministic_fallback,
         },
     )
 

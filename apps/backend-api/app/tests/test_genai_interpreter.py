@@ -8,9 +8,21 @@ agent execution, and output assembly.
 from datetime import datetime
 from unittest.mock import MagicMock
 
+import pytest
+
 from app.models.vin import VinInterpretation
 from app.models.cohort import CohortInterpretation
 from app.services.genai_interpreter import GenAIInterpreter
+from app.utils.config import load_config
+
+
+@pytest.fixture(autouse=True)
+def _local_runtime_flags(monkeypatch):
+    monkeypatch.setenv("FEATURE_LANGGRAPH", "true")
+    monkeypatch.setenv("FEATURE_ALLOW_DETERMINISTIC_FALLBACK", "true")
+    load_config.cache_clear()
+    yield
+    load_config.cache_clear()
 
 
 def test_interpret_vin_end_to_end(monkeypatch):

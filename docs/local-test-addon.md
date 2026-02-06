@@ -33,3 +33,4 @@ Ports:
 ```
 
 This script sets process-only env vars, runs tests, then restores environment.
+It keeps `FEATURE_LANGGRAPH=true` and enables deterministic fallback only for local compatibility checks.

@@ -43,7 +43,7 @@ From `apps/dashboard-streamlit`:
 - Approval endpoint records and retrieves decisions.
 
 ## Coding Standards
-- Keep interpretation logic deterministic-first.
+- Keep LangGraph orchestration as the default execution path.
 - Preserve evidence transparency for every recommendation.
 - Avoid hardcoding secrets or environment-specific values.
 - Keep dashboards mobile-safe and API-driven.

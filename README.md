@@ -16,8 +16,8 @@ What remains manual is interpretation at scale:
 
 This platform addresses that gap by combining:
 - deterministic agent logic,
-- optional LangGraph orchestration,
-- optional LangChain + OpenAI narrative generation,
+- LangGraph-first orchestration,
+- optional LangChain + LLM narrative generation (OpenAI/OpenAI-compatible),
 - API-first delivery to React and Streamlit dashboards.
 
 ## What This Project Solves
@@ -43,13 +43,13 @@ Databricks Unity Catalog marts (or sample JSON)
            MartLoader
                 |
                 v
-  GraphRunner (LangGraph if available, deterministic fallback otherwise)
+  GraphRunner (LangGraph core orchestration; deterministic fallback only if explicitly enabled)
         |                    |                       |
         v                    v                       v
 VinExplainerAgent     CohortBriefAgent        EvidenceAgent
         \                    |                      /
          \                   |                     /
-          +---- NarrativeComposer (LangChain/OpenAI optional) ----+
+          +---- NarrativeComposer (LangChain + OpenAI/OpenAI-compatible optional) ----+
                                   |
                                   v
                            FastAPI Endpoints
@@ -123,11 +123,11 @@ telemetry_agent/
    - `data/reference/ref_hi_catalog.yaml`
    - `data/reference/ref_hi_family_map.yaml`
    - `data/reference/ref_confidence_map.yaml`
-3. `GraphRunner` executes orchestration stages:
+3. `GraphRunner` executes orchestration stages through LangGraph:
    - VIN: evidence -> summary -> recommendations -> evidence consolidation -> interpretation
    - Cohort: metrics/anomalies -> summary -> interpretation
 4. `NarrativeComposer` generates text:
-   - via LangChain/OpenAI when configured and available,
+   - via LangChain + provider endpoint when configured and available,
    - deterministic templates otherwise.
 5. FastAPI routers return typed responses to dashboards, export, and approval flows.
 
@@ -161,11 +161,13 @@ Use for real Unity Catalog marts.
 
 ### 3) Optional LLM Mode
 Enable richer narrative generation when available.
-- `OPENAI_API_KEY`
-- `OPENAI_MODEL` (default `gpt-4.1-mini`)
-- `FEATURE_LANGGRAPH=true`
+- `LLM_PROVIDER` (`openai` or `openai_compatible`)
+- `LLM_API_KEY` (or `OPENAI_API_KEY` legacy alias)
+- `LLM_MODEL` (default `gpt-4.1-mini`)
+- `LLM_BASE_URL` (required when `LLM_PROVIDER=openai_compatible`)
 
-If LLM/LangGraph runtimes are unavailable, the system still runs with deterministic behavior.
+LangGraph is enabled by default and treated as the core orchestration runtime.
+Use `FEATURE_ALLOW_DETERMINISTIC_FALLBACK=true` only for emergency/local compatibility.
 
 ## Local Run Options
 ### Option A: Docker Compose
@@ -237,12 +239,19 @@ Key variables:
   - `DATABRICKS_CATALOG`
   - `DATABRICKS_SCHEMA`
 - LLM features:
-  - `OPENAI_API_KEY`
-  - `OPENAI_MODEL`
-  - `OPENAI_TEMPERATURE`
-  - `OPENAI_MAX_TOKENS`
+  - `LLM_PROVIDER`
+  - `LLM_API_KEY`
+  - `LLM_BASE_URL`
+  - `LLM_MODEL`
+  - `LLM_TEMPERATURE`
+  - `LLM_MAX_TOKENS`
+  - `OPENAI_API_KEY` (legacy alias)
+  - `OPENAI_MODEL` (legacy alias)
+  - `OPENAI_TEMPERATURE` (legacy alias)
+  - `OPENAI_MAX_TOKENS` (legacy alias)
   - `FEATURE_GENAI`
   - `FEATURE_LANGGRAPH`
+  - `FEATURE_ALLOW_DETERMINISTIC_FALLBACK`
   - `FEATURE_PDF`
   - `FEATURE_EMAIL`
 
@@ -292,7 +301,8 @@ streamlit run app/main.py
 
 ## Known Notes
 - `reportlab` is required for `/export/pdf`.
-- `langgraph` and `langchain` are optional runtime dependencies.
+- `langgraph` is a required runtime dependency by default.
+- `langchain`/`langchain-openai` are optional unless LLM narrative mode is enabled.
 - Production expectation is `APP_ENV=prod` with `DATA_SOURCE=databricks`.
 - Local kind workflow requires `kind` and `kubectl` installed on host.
 

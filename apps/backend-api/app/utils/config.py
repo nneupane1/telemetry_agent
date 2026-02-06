@@ -4,7 +4,7 @@ Central configuration management for the GenAI Predictive Interpreter Platform.
 Key goals:
 - Typed, validated configuration
 - Dual data-source support (Databricks Unity Catalog or sample files)
-- Optional LLM configuration so local development is not blocked by secrets
+- Optional LLM configuration with OpenAI and OpenAI-compatible providers
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, SecretStr, ValidationError
 
 Environment = Literal["local", "dev", "prod"]
 DataSource = Literal["databricks", "sample"]
+LLMProvider = Literal["openai", "openai_compatible", "none"]
 
 
 def _get_env(name: str, default: Optional[str] = None) -> str:
@@ -39,10 +40,15 @@ class DatabricksConfig(BaseModel):
     http_path: str = Field(..., description="SQL Warehouse HTTP path")
     token: SecretStr = Field(..., description="Databricks access token")
     catalog: str = Field(..., description="Unity Catalog catalog name")
-    schema: str = Field(..., description="Unity Catalog schema name")
+    schema_name: str = Field(
+        ...,
+        alias="schema",
+        description="Unity Catalog schema name",
+    )
 
     class Config:
         frozen = True
+        allow_population_by_field_name = True
 
 
 class OpenAIConfig(BaseModel):
@@ -50,13 +56,17 @@ class OpenAIConfig(BaseModel):
     model: str = Field(default="gpt-4.1-mini", description="LLM model")
     temperature: float = Field(default=0.2, ge=0.0, le=1.0)
     max_tokens: int = Field(default=1024, gt=128)
+    base_url: Optional[str] = Field(
+        default=None,
+        description="Optional OpenAI-compatible API base URL",
+    )
 
     class Config:
         frozen = True
 
 
 class LLMConfig(BaseModel):
-    provider: Literal["openai", "none"] = Field(default="none")
+    provider: LLMProvider = Field(default="none")
     openai: Optional[OpenAIConfig] = None
 
     class Config:
@@ -96,6 +106,7 @@ class EmailConfig(BaseModel):
 class FeatureFlags(BaseModel):
     enable_genai: bool = True
     enable_langgraph: bool = True
+    allow_deterministic_fallback: bool = False
     enable_pdf_export: bool = True
     enable_email_delivery: bool = False
     strict_validation: bool = False
@@ -145,22 +156,51 @@ def _load_optional_databricks(source: DataSource) -> Optional[DatabricksConfig]:
         http_path=_get_env("DATABRICKS_HTTP_PATH"),
         token=SecretStr(_get_env("DATABRICKS_TOKEN")),
         catalog=_get_env("DATABRICKS_CATALOG"),
-        schema=_get_env("DATABRICKS_SCHEMA"),
+        schema_name=_get_env("DATABRICKS_SCHEMA"),
     )
 
 
 def _load_llm() -> LLMConfig:
-    api_key = os.getenv("OPENAI_API_KEY")
+    provider_raw = (os.getenv("LLM_PROVIDER") or "").strip().lower()
+    llm_api_key = os.getenv("LLM_API_KEY")
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    api_key = llm_api_key or openai_api_key
+    base_url = os.getenv("LLM_BASE_URL")
+
+    if provider_raw and provider_raw not in {"openai", "openai_compatible", "none"}:
+        raise RuntimeError(
+            "LLM_PROVIDER must be one of: openai, openai_compatible, none"
+        )
+
     if not api_key:
         return LLMConfig(provider="none", openai=None)
 
+    provider: LLMProvider
+    if provider_raw:
+        provider = provider_raw  # type: ignore[assignment]
+    else:
+        provider = "openai_compatible" if base_url else "openai"
+
+    if provider == "none":
+        return LLMConfig(provider="none", openai=None)
+
+    if provider == "openai_compatible" and not base_url:
+        raise RuntimeError(
+            "LLM_PROVIDER=openai_compatible requires LLM_BASE_URL"
+        )
+
     openai_cfg = OpenAIConfig(
         api_key=SecretStr(api_key),
-        model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-        temperature=float(os.getenv("OPENAI_TEMPERATURE", "0.2")),
-        max_tokens=int(os.getenv("OPENAI_MAX_TOKENS", "1024")),
+        model=os.getenv("LLM_MODEL", os.getenv("OPENAI_MODEL", "gpt-4.1-mini")),
+        temperature=float(
+            os.getenv("LLM_TEMPERATURE", os.getenv("OPENAI_TEMPERATURE", "0.2"))
+        ),
+        max_tokens=int(
+            os.getenv("LLM_MAX_TOKENS", os.getenv("OPENAI_MAX_TOKENS", "1024"))
+        ),
+        base_url=base_url,
     )
-    return LLMConfig(provider="openai", openai=openai_cfg)
+    return LLMConfig(provider=provider, openai=openai_cfg)
 
 
 @lru_cache(maxsize=1)
@@ -207,6 +247,10 @@ def load_config() -> AppConfig:
         features = FeatureFlags(
             enable_genai=_env_bool("FEATURE_GENAI", True),
             enable_langgraph=_env_bool("FEATURE_LANGGRAPH", True),
+            allow_deterministic_fallback=_env_bool(
+                "FEATURE_ALLOW_DETERMINISTIC_FALLBACK",
+                False,
+            ),
             enable_pdf_export=_env_bool("FEATURE_PDF", True),
             enable_email_delivery=_env_bool("FEATURE_EMAIL", False),
             strict_validation=env == "prod",
@@ -230,4 +274,3 @@ def load_config() -> AppConfig:
 
     except ValidationError as exc:
         raise RuntimeError(f"Invalid configuration: {exc}") from exc
-

@@ -1,8 +1,8 @@
 """
 Graph-based orchestration layer.
 
-Uses LangGraph when available and enabled. Falls back to deterministic
-sequential orchestration when LangGraph runtime is unavailable.
+Uses LangGraph as the primary orchestration runtime.
+Deterministic sequential fallback is only used when explicitly enabled.
 """
 
 from __future__ import annotations
@@ -41,6 +41,19 @@ class GraphRunner:
 
         if self._config.features.enable_langgraph:
             self._initialize_graphs()
+        elif not self._config.features.allow_deterministic_fallback:
+            raise RuntimeError(
+                "FEATURE_LANGGRAPH=false is not allowed unless "
+                "FEATURE_ALLOW_DETERMINISTIC_FALLBACK=true."
+            )
+
+        if (
+            not self._config.features.allow_deterministic_fallback
+            and not self._langgraph_available
+        ):
+            raise RuntimeError(
+                "LangGraph orchestration is required but unavailable."
+            )
 
     @property
     def langgraph_enabled(self) -> bool:
@@ -63,20 +76,25 @@ class GraphRunner:
             "reference_map": reference_map,
         }
 
-        if self._vin_graph is not None:
-            try:
-                final_state = self._vin_graph.invoke(initial_state)
-                return WorkflowResult(
-                    vin_interpretation=final_state.get("interpretation"),
-                    evidence_summary=final_state.get("evidence_summary"),
-                )
-            except Exception:
+        if self._vin_graph is None:
+            if self._config.features.allow_deterministic_fallback:
+                return self._run_vin_fallback(initial_state)
+            raise RuntimeError("VIN graph is unavailable.")
+
+        try:
+            final_state = self._vin_graph.invoke(initial_state)
+            return WorkflowResult(
+                vin_interpretation=final_state.get("interpretation"),
+                evidence_summary=final_state.get("evidence_summary"),
+            )
+        except Exception:
+            if self._config.features.allow_deterministic_fallback:
                 log_event(
                     logger,
                     "LangGraph VIN workflow failed, using deterministic fallback",
                 )
-
-        return self._run_vin_fallback(initial_state)
+                return self._run_vin_fallback(initial_state)
+            raise
 
     def run_cohort(
         self,
@@ -93,19 +111,24 @@ class GraphRunner:
             "anomalies_raw": anomalies,
         }
 
-        if self._cohort_graph is not None:
-            try:
-                final_state = self._cohort_graph.invoke(initial_state)
-                return WorkflowResult(
-                    cohort_interpretation=final_state.get("interpretation")
-                )
-            except Exception:
+        if self._cohort_graph is None:
+            if self._config.features.allow_deterministic_fallback:
+                return self._run_cohort_fallback(initial_state)
+            raise RuntimeError("Cohort graph is unavailable.")
+
+        try:
+            final_state = self._cohort_graph.invoke(initial_state)
+            return WorkflowResult(
+                cohort_interpretation=final_state.get("interpretation")
+            )
+        except Exception:
+            if self._config.features.allow_deterministic_fallback:
                 log_event(
                     logger,
                     "LangGraph cohort workflow failed, using deterministic fallback",
                 )
-
-        return self._run_cohort_fallback(initial_state)
+                return self._run_cohort_fallback(initial_state)
+            raise
 
     def compose_chat_reply(
         self,
@@ -121,12 +144,16 @@ class GraphRunner:
     def _initialize_graphs(self) -> None:
         try:
             from langgraph.graph import END, StateGraph
-        except Exception:
+        except Exception as exc:
             log_event(
                 logger,
-                "LangGraph package unavailable, graph execution disabled",
+                "LangGraph package unavailable",
             )
-            return
+            if self._config.features.allow_deterministic_fallback:
+                return
+            raise RuntimeError(
+                "langgraph package is required when deterministic fallback is disabled."
+            ) from exc
 
         # VIN graph
         vin_graph = StateGraph(dict)
@@ -304,4 +331,3 @@ class GraphRunner:
             model_version=self._model_version,
         )
         return WorkflowResult(cohort_interpretation=interpretation)
-

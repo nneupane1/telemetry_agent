@@ -22,7 +22,7 @@ The system does not replace predictive models. It interprets their outputs consi
 - `GraphRunner` (`apps/backend-api/app/workflows/graph_runner.py`):
   - VIN graph nodes: evidence -> summary -> recommendations -> consolidation -> interpretation
   - Cohort graph nodes: metrics/anomalies -> summary -> interpretation
-- If LangGraph runtime is missing, sequential fallback executes the same logical stages.
+- LangGraph is the default orchestration core; deterministic fallback is only for explicit emergency mode.
 
 ### Narrative composition
 - `NarrativeComposer` (`apps/backend-api/app/workflows/narrative.py`) uses LangChain prompt templates.
