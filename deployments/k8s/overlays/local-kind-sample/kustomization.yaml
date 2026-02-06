@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+
+images:
+  - name: ghcr.io/nneupane1/telemetry-backend
+    newName: telemetry-backend
+    newTag: local
+  - name: ghcr.io/nneupane1/telemetry-react
+    newName: telemetry-react
+    newTag: local
+  - name: ghcr.io/nneupane1/telemetry-streamlit
+    newName: telemetry-streamlit
+    newTag: local
+
+configMapGenerator:
+  - name: telemetry-reference-data
+    files:
+      - ref_hi_catalog.yaml=../../../../data/reference/ref_hi_catalog.yaml
+      - ref_hi_family_map.yaml=../../../../data/reference/ref_hi_family_map.yaml
+      - ref_confidence_map.yaml=../../../../data/reference/ref_confidence_map.yaml
+  - name: telemetry-sample-data
+    files:
+      - sample_vin_data.json=../../../../data/sample/sample_vin_data.json
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+patchesStrategicMerge:
+  - patch-backend-config.yaml
+  - patch-react-config.yaml
+  - patch-streamlit-config.yaml
+  - patch-backend-deployment.yaml
+  - patch-services-nodeport.yaml

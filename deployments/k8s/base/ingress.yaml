@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: telemetry-ingress
+  namespace: telemetry-agent
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: app.telemetry.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: telemetry-react
+                port:
+                  number: 3000
+    - host: api.telemetry.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: telemetry-backend
+                port:
+                  number: 8000
+    - host: ops.telemetry.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: telemetry-streamlit
+                port:
+                  number: 8501

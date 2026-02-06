@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry-backend
+  namespace: telemetry-agent
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: backend
+          volumeMounts:
+            - name: reference-data
+              mountPath: /app/data/reference
+              readOnly: true
+      volumes:
+        - name: reference-data
+          configMap:
+            name: telemetry-reference-data

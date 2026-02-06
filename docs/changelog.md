@@ -9,6 +9,8 @@
 - Sample-data execution mode with JSON-backed mart emulation.
 - Health endpoint (`/health`) for runtime checks.
 - Non-empty deployment artifacts for Compose, Kubernetes, and Terraform bootstrap.
+- Local Kubernetes deployment add-on using kind, base manifests, and overlays.
+- Local kind scripts for sample/databricks startup and teardown.
 - Fully wired Streamlit operator workflow (evidence, action pack, approval, chat).
 - Redesigned React dashboard with API-backed overview/VIN/cohort pages.
 
@@ -22,4 +24,3 @@
 - Router/service naming drift (`GenAIInterpreter` compatibility alias retained).
 - Import-time failures when optional dependencies are absent.
 - Placeholder and zero-byte architecture assets replaced with functional scaffolds.
-

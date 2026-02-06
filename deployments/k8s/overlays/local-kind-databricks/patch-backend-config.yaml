@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telemetry-backend-config
+  namespace: telemetry-agent
+data:
+  APP_ENV: "prod"
+  DATA_SOURCE: "databricks"
+  LOG_LEVEL: "INFO"
+  REFERENCE_DIR: "/app/data/reference"
+  FEATURE_LANGGRAPH: "true"
+  FEATURE_GENAI: "true"

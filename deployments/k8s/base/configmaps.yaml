@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telemetry-backend-config
+  namespace: telemetry-agent
+data:
+  APP_ENV: "prod"
+  DATA_SOURCE: "databricks"
+  LOG_LEVEL: "INFO"
+  REFERENCE_DIR: "/app/data/reference"
+  SAMPLE_DATA_FILE: "/app/data/sample/sample_vin_data.json"
+  MART_MH_TABLE: "mart_mh_hi_snapshot_daily"
+  MART_MP_TABLE: "mart_mp_triggers_daily"
+  MART_FIM_TABLE: "mart_fim_rootcause_daily"
+  MART_COHORT_METRICS_TABLE: "mart_cohort_metrics_daily"
+  MART_COHORT_ANOMALIES_TABLE: "mart_cohort_anomalies_daily"
+  DATABRICKS_CATALOG: "main"
+  DATABRICKS_SCHEMA: "predictive_marts"
+  FEATURE_GENAI: "true"
+  FEATURE_LANGGRAPH: "true"
+  FEATURE_PDF: "true"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telemetry-react-config
+  namespace: telemetry-agent
+data:
+  NEXT_PUBLIC_API_BASE_URL: "http://api.telemetry.local"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telemetry-streamlit-config
+  namespace: telemetry-agent
+data:
+  API_BASE_URL: "http://telemetry-backend.telemetry-agent.svc.cluster.local:8000"

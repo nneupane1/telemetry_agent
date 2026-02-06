@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry-backend
+  namespace: telemetry-agent
+  labels:
+    app: telemetry-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: telemetry-backend
+  template:
+    metadata:
+      labels:
+        app: telemetry-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/nneupane1/telemetry-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: telemetry-backend-config
+            - secretRef:
+                name: telemetry-secrets
+                optional: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /openapi.json
+              port: 8000
+            initialDelaySeconds: 25
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: telemetry-backend
+  namespace: telemetry-agent
+spec:
+  selector:
+    app: telemetry-backend
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP

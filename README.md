@@ -62,25 +62,29 @@ tests/
 ```
 
 ## Running Locally
-### Option A: Sample Mode (no Databricks required)
+### Option A: Docker Compose (simple containerized run)
 1. Copy `.env.example` to `.env`.
-2. Keep `DATA_SOURCE=sample`.
+2. Choose source mode:
+   - `DATA_SOURCE=sample` for local sample data.
+   - `DATA_SOURCE=databricks` for Unity Catalog marts.
 3. Start services:
    - `docker compose -f deployments/docker-compose.yaml up --build`
 
-### Option B: Databricks Mode (Unity Catalog)
-1. Copy `.env.example` to `.env`.
-2. Set:
-   - `DATA_SOURCE=databricks`
-   - `DATABRICKS_HOST`
-   - `DATABRICKS_HTTP_PATH`
-   - `DATABRICKS_TOKEN`
-   - `DATABRICKS_CATALOG`
-   - `DATABRICKS_SCHEMA`
-3. Optional LLM settings:
-   - `OPENAI_API_KEY`
-   - `FEATURE_LANGGRAPH=true`
-4. Start backend and dashboards.
+### Option B: Local Kubernetes (real manifests on your machine)
+This mode runs Docker, a local Kubernetes cluster, and your Kubernetes manifests end-to-end.
+
+1. Install prerequisites:
+   - Docker
+   - `kind`
+   - `kubectl`
+2. Copy `.env.example` to `.env`.
+3. Start local Kubernetes:
+   - Sample mode: `.\scripts\local\start-local-k8s.ps1 -DataSource sample`
+   - Databricks mode: `.\scripts\local\start-local-k8s.ps1 -DataSource databricks`
+4. Stop local Kubernetes:
+   - `.\scripts\local\stop-local-k8s.ps1`
+
+Detailed runbook: `docs/local-k8s-kind.md`
 
 ## Backend Development Commands
 From `apps/backend-api`:
@@ -91,6 +95,9 @@ From `apps/backend-api`:
 ## Deployment Artifacts
 - Docker Compose: `deployments/docker-compose.yaml`
 - Kubernetes baseline: `deployments/k8s/api-deployment.yaml`
+- Kubernetes app manifests: `deployments/k8s/base/*`
+- Kubernetes local-kind overlays: `deployments/k8s/overlays/*`
+- kind cluster config: `deployments/k8s/kind/cluster-config.yaml`
 - Terraform starter: `deployments/terraform/main.tf`
 - Local test add-on overlay (no K8s changes): `deployments/docker-compose.local-test.yaml`
 - Local helper scripts: `scripts/local/*` (see `docs/local-test-addon.md`)

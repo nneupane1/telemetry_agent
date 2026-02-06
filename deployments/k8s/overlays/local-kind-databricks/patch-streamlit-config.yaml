@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telemetry-streamlit-config
+  namespace: telemetry-agent
+data:
+  API_BASE_URL: "http://telemetry-backend.telemetry-agent.svc.cluster.local:8000"

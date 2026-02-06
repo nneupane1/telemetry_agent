@@ -11,8 +11,12 @@
 2. Choose mode:
    - `DATA_SOURCE=sample` for local validation.
    - `DATA_SOURCE=databricks` for real telemetry.
-3. Start stack:
-   - `docker compose -f deployments/docker-compose.yaml up --build`
+3. Choose runtime:
+   - Compose: `docker compose -f deployments/docker-compose.yaml up --build`
+   - Local Kubernetes (kind): `.\scripts\local\start-local-k8s.ps1 -DataSource sample`
+   - Local Kubernetes with Databricks: `.\scripts\local\start-local-k8s.ps1 -DataSource databricks`
+4. Stop local Kubernetes when done:
+   - `.\scripts\local\stop-local-k8s.ps1`
 
 ## Backend Local Loop
 From `apps/backend-api`:

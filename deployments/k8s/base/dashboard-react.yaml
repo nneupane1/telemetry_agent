@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry-react
+  namespace: telemetry-agent
+  labels:
+    app: telemetry-react
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telemetry-react
+  template:
+    metadata:
+      labels:
+        app: telemetry-react
+    spec:
+      containers:
+        - name: dashboard-react
+          image: ghcr.io/nneupane1/telemetry-react:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: telemetry-react-config
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: telemetry-react
+  namespace: telemetry-agent
+spec:
+  selector:
+    app: telemetry-react
+  ports:
+    - name: http
+      protocol: TCP
+      port: 3000
+      targetPort: 3000
+  type: ClusterIP

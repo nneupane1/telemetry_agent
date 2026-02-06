@@ -40,8 +40,9 @@ The system does not replace predictive models. It interprets their outputs consi
 
 ## Deployment Path
 1. Local compose (`deployments/docker-compose.yaml`)
-2. Kubernetes baseline (`deployments/k8s/api-deployment.yaml`)
-3. Terraform bootstrap (`deployments/terraform/main.tf`)
+2. Local Kubernetes on kind (`scripts/local/start-local-k8s.ps1`)
+3. Kubernetes manifests (`deployments/k8s/base` + `deployments/k8s/overlays`)
+4. Terraform bootstrap (`deployments/terraform/main.tf`)
 
 ## Production Checklist
 - `APP_ENV=prod`

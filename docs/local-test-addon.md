@@ -1,6 +1,7 @@
 # Local Test Add-on (No K8s Changes)
 
 This repository includes a local overlay for POC/testing that is separate from Kubernetes deployment logic.
+For local Kubernetes execution, see `docs/local-k8s-kind.md`.
 
 ## Principle
 - Kubernetes manifests and cloud deployment flow remain untouched.
