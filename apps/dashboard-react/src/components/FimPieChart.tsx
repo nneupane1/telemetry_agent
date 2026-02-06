@@ -1,5 +1,9 @@
 import { motion } from "framer-motion"
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
+import dynamic from "next/dynamic"
+import type { EChartsOption } from "echarts"
+import { useMemo } from "react"
+
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false })
 
 interface FimSlice {
   name: string
@@ -14,6 +18,65 @@ interface FimPieChartProps {
 const COLORS = ["#42E5FF", "#FF8C42", "#7CF7A5", "#53C8D8", "#FFB347"]
 
 export default function FimPieChart({ title, data }: FimPieChartProps) {
+  const option = useMemo<EChartsOption>(
+    () => ({
+      animationDuration: 880,
+      animationEasing: "cubicOut",
+      tooltip: {
+        trigger: "item",
+        backgroundColor: "#102635",
+        borderColor: "rgba(66,229,255,0.28)",
+        borderWidth: 1,
+        textStyle: { color: "#E8F7FF" },
+      },
+      legend: {
+        show: true,
+        bottom: 0,
+        itemWidth: 10,
+        itemHeight: 10,
+        textStyle: {
+          color: "#9EC7D9",
+          fontSize: 11,
+        },
+      },
+      series: [
+        {
+          name: "Signal Mix",
+          type: "pie",
+          radius: ["42%", "74%"],
+          center: ["50%", "44%"],
+          avoidLabelOverlap: true,
+          padAngle: 2,
+          itemStyle: {
+            borderColor: "#061017",
+            borderWidth: 2,
+          },
+          label: {
+            color: "#E8F7FF",
+            formatter: "{b|{b}}\n{c} ({d}%)",
+            rich: {
+              b: {
+                color: "#9EC7D9",
+                fontSize: 10,
+                fontWeight: 500,
+              },
+            },
+          },
+          data: data.map((item, index) => ({
+            value: item.value,
+            name: item.name,
+            itemStyle: {
+              color: COLORS[index % COLORS.length],
+              shadowBlur: 18,
+              shadowColor: `${COLORS[index % COLORS.length]}55`,
+            },
+          })),
+        },
+      ],
+    }),
+    [data]
+  )
+
   return (
     <motion.section
       initial={{ opacity: 0, scale: 0.97 }}
@@ -29,34 +92,14 @@ export default function FimPieChart({ title, data }: FimPieChartProps) {
             No distribution values available.
           </div>
         ) : (
-          <ResponsiveContainer>
-            <PieChart>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#102635",
-                  border: "1px solid rgba(66,229,255,0.28)",
-                  borderRadius: "10px",
-                  color: "#E8F7FF",
-                }}
-              />
-              <Pie
-                data={data}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={58}
-                outerRadius={92}
-                paddingAngle={2}
-                isAnimationActive
-              >
-                {data.map((_, index) => (
-                  <Cell key={`slice-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
+          <ReactECharts
+            option={option}
+            style={{ width: "100%", height: "100%" }}
+            notMerge
+            lazyUpdate
+          />
         )}
       </div>
     </motion.section>
   )
 }
-

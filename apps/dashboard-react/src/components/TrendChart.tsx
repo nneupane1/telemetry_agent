@@ -1,13 +1,9 @@
 import { motion } from "framer-motion"
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts"
+import dynamic from "next/dynamic"
+import type { EChartsOption } from "echarts"
+import { useMemo } from "react"
+
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false })
 
 interface TrendPoint {
   timestamp: string
@@ -26,6 +22,91 @@ export default function TrendChart({
   data,
   color = "#42E5FF",
 }: TrendChartProps) {
+  const option = useMemo<EChartsOption>(() => {
+    const anomalies = data
+      .filter((point) => point.isAnomaly)
+      .map((point) => [point.timestamp, point.value])
+
+    return {
+      animationDuration: 850,
+      animationEasing: "cubicOut",
+      tooltip: {
+        trigger: "axis",
+        axisPointer: {
+          type: "line",
+          lineStyle: { color: "rgba(66,229,255,0.45)" },
+        },
+        backgroundColor: "#102635",
+        borderColor: "rgba(66,229,255,0.28)",
+        borderWidth: 1,
+        textStyle: {
+          color: "#E8F7FF",
+        },
+      },
+      grid: {
+        left: 42,
+        right: 18,
+        top: 26,
+        bottom: 30,
+      },
+      xAxis: {
+        type: "category",
+        boundaryGap: false,
+        data: data.map((point) => point.timestamp),
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: {
+          color: "#9EC7D9",
+          fontSize: 11,
+        },
+      },
+      yAxis: {
+        type: "value",
+        splitNumber: 4,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: "#9EC7D9", fontSize: 11 },
+        splitLine: {
+          lineStyle: {
+            color: "rgba(255,255,255,0.08)",
+            type: "dashed",
+          },
+        },
+      },
+      series: [
+        {
+          name: "Stability",
+          type: "line",
+          smooth: true,
+          showSymbol: false,
+          lineStyle: {
+            width: 3,
+            color,
+            shadowBlur: 14,
+            shadowColor: "rgba(66,229,255,0.32)",
+          },
+          areaStyle: {
+            color: "rgba(66,229,255,0.1)",
+          },
+          data: data.map((point) => point.value),
+        },
+        {
+          name: "Anomaly",
+          type: "scatter",
+          symbolSize: 9,
+          data: anomalies,
+          itemStyle: {
+            color: "#FF8C42",
+            borderColor: "#FFC188",
+            borderWidth: 1,
+            shadowBlur: 14,
+            shadowColor: "rgba(255,140,66,0.35)",
+          },
+        },
+      ],
+    }
+  }, [color, data])
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 10 }}
@@ -41,40 +122,14 @@ export default function TrendChart({
             No trend points available for this context.
           </div>
         ) : (
-          <ResponsiveContainer>
-            <LineChart data={data}>
-              <CartesianGrid stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
-              <XAxis
-                dataKey="timestamp"
-                tick={{ fill: "#9EC7D9", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fill: "#9EC7D9", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#102635",
-                  border: "1px solid rgba(66,229,255,0.28)",
-                  borderRadius: "10px",
-                  color: "#E8F7FF",
-                }}
-              />
-              <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2.5} dot={false} />
-              <Line
-                type="monotone"
-                dataKey={(point) => (point.isAnomaly ? point.value : null)}
-                stroke="transparent"
-                dot={{ r: 4, fill: "#FF8C42", stroke: "#FF8C42", strokeWidth: 1 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <ReactECharts
+            option={option}
+            style={{ width: "100%", height: "100%" }}
+            notMerge
+            lazyUpdate
+          />
         )}
       </div>
     </motion.section>
   )
 }
-

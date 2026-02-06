@@ -14,11 +14,15 @@ interface VinItem {
 interface VinExplorerProps {
   title?: string
   vins: VinItem[]
+  selectedVin?: string | null
+  onSelectVin?: (vin: string) => void
 }
 
 export default function VinExplorer({
   title = "Vehicle Explorer",
   vins,
+  selectedVin = null,
+  onSelectVin,
 }: VinExplorerProps) {
   return (
     <section className="panel panel-glow p-5 space-y-4">
@@ -36,13 +40,16 @@ export default function VinExplorer({
       <div className="space-y-2">
         {vins.map((vinItem, index) => {
           const style = getRiskStyle(vinItem.risk_level)
+          const isSelected = selectedVin === vinItem.vin
           return (
             <motion.article
               key={vinItem.vin}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.04 }}
-              className={`rounded-lg border ${style.border} ${style.bg} px-4 py-3 hover-lift`}
+              className={`rounded-lg border ${style.border} ${style.bg} px-4 py-3 hover-lift ${
+                isSelected ? "ring-1 ring-neon-cyan/55 shadow-neonCyan" : ""
+              }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
@@ -55,12 +62,23 @@ export default function VinExplorer({
                     <p className="text-xs text-text-secondary max-w-xl">{vinItem.summary}</p>
                   )}
                 </div>
-                <Link
-                  href={`/vin/${vinItem.vin}`}
-                  className="inline-flex items-center gap-1 text-sm text-neon-cyan hover:underline"
-                >
-                  Open <ArrowRight size={14} />
-                </Link>
+                <div className="flex flex-col items-end gap-2">
+                  {onSelectVin && (
+                    <button
+                      type="button"
+                      onClick={() => onSelectVin(vinItem.vin)}
+                      className="chip-cyan"
+                    >
+                      {isSelected ? "Spotlighted" : "Spotlight"}
+                    </button>
+                  )}
+                  <Link
+                    href={`/vin/${vinItem.vin}`}
+                    className="inline-flex items-center gap-1 text-sm text-neon-cyan hover:underline"
+                  >
+                    Open <ArrowRight size={14} />
+                  </Link>
+                </div>
               </div>
             </motion.article>
           )
@@ -69,4 +87,3 @@ export default function VinExplorer({
     </section>
   )
 }
-
