@@ -27,6 +27,7 @@ The system does not replace predictive models. It interprets their outputs consi
 ### Narrative composition
 - `NarrativeComposer` (`apps/backend-api/app/workflows/narrative.py`) uses LangChain prompt templates.
 - If LLM provider/runtime is unavailable, deterministic templates are used.
+- For chat, deterministic and LLM candidates are scored and the best grounded response is selected.
 
 ### API and delivery
 - FastAPI routers return interpretation JSON.

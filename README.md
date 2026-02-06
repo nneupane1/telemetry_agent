@@ -129,6 +129,7 @@ telemetry_agent/
 4. `NarrativeComposer` generates text:
    - via LangChain + provider endpoint when configured and available,
    - deterministic templates otherwise.
+   - chat replies use a hybrid selector that scores deterministic vs LLM candidates and returns the safer/higher-scoring one.
 5. FastAPI routers return typed responses to dashboards, export, and approval flows.
 
 ## API Surface

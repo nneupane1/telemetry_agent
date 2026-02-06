@@ -266,9 +266,14 @@ class GenAIInterpreterService:
                 except Exception:
                     # Keep chat resilient even if interpretation lookup fails.
                     pass
-            reply = self._vin_agent.answer_question(
+            deterministic_reply = self._vin_agent.answer_question(
                 question=user_message,
                 context=context,
+            )
+            reply = self._graph_runner.compose_chat_reply(
+                user_message=user_message,
+                context=context,
+                deterministic_reply=deterministic_reply,
             )
         elif context and "cohort_id" in context:
             if "anomaly_count" not in context:
@@ -284,9 +289,14 @@ class GenAIInterpreterService:
                     }
                 except Exception:
                     pass
-            reply = self._cohort_agent.answer_question(
+            deterministic_reply = self._cohort_agent.answer_question(
                 question=user_message,
                 context=context,
+            )
+            reply = self._graph_runner.compose_chat_reply(
+                user_message=user_message,
+                context=context,
+                deterministic_reply=deterministic_reply,
             )
         else:
             reply = self._graph_runner.compose_chat_reply(

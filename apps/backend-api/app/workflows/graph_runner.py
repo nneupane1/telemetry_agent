@@ -135,7 +135,14 @@ class GraphRunner:
         *,
         user_message: str,
         context: Optional[Dict[str, Any]],
+        deterministic_reply: Optional[str] = None,
     ) -> str:
+        if deterministic_reply is not None:
+            return self._composer.compose_hybrid_chat_reply(
+                user_message=user_message,
+                context=context,
+                deterministic_reply=deterministic_reply,
+            )
         return self._composer.compose_chat_reply(
             user_message=user_message,
             context=context,

@@ -94,3 +94,56 @@ def test_interpret_cohort_end_to_end(monkeypatch):
     assert result.cohort_id == "TEST_COHORT"
     assert result.anomalies
     assert result.model_version == "test"
+
+
+def test_generate_chat_reply_vin_uses_hybrid_selector(monkeypatch):
+    interpreter = GenAIInterpreter(model_version="test")
+
+    context = {
+        "vin": "VIN123",
+        "risk_level": "HIGH",
+        "recommendations": [{"title": "Inspect HI-4302"}],
+        "evidence_summary": {"MH": {"count": 1}},
+    }
+
+    interpreter._vin_agent.answer_question = MagicMock(return_value="deterministic-vin-reply")
+    interpreter._graph_runner.compose_chat_reply = MagicMock(return_value="hybrid-vin-reply")
+
+    reply = interpreter.generate_chat_reply(
+        user_message="What should we do next?",
+        context=context,
+        request_id="test-request",
+    )
+
+    assert reply == "hybrid-vin-reply"
+    interpreter._graph_runner.compose_chat_reply.assert_called_once()
+    kwargs = interpreter._graph_runner.compose_chat_reply.call_args.kwargs
+    assert kwargs["deterministic_reply"] == "deterministic-vin-reply"
+
+
+def test_generate_chat_reply_cohort_uses_hybrid_selector(monkeypatch):
+    interpreter = GenAIInterpreter(model_version="test")
+
+    context = {
+        "cohort_id": "TEST_COHORT",
+        "anomaly_count": 4,
+        "risk_distribution": {"HIGH": 2, "ELEVATED": 2},
+    }
+
+    interpreter._cohort_agent.answer_question = MagicMock(
+        return_value="deterministic-cohort-reply"
+    )
+    interpreter._graph_runner.compose_chat_reply = MagicMock(
+        return_value="hybrid-cohort-reply"
+    )
+
+    reply = interpreter.generate_chat_reply(
+        user_message="How severe is this cohort?",
+        context=context,
+        request_id="test-request",
+    )
+
+    assert reply == "hybrid-cohort-reply"
+    interpreter._graph_runner.compose_chat_reply.assert_called_once()
+    kwargs = interpreter._graph_runner.compose_chat_reply.call_args.kwargs
+    assert kwargs["deterministic_reply"] == "deterministic-cohort-reply"
