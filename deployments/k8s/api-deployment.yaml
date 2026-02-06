@@ -1,0 +1,79 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry-backend
+  labels:
+    app: telemetry-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: telemetry-backend
+  template:
+    metadata:
+      labels:
+        app: telemetry-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/your-org/telemetry-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: APP_ENV
+              value: "prod"
+            - name: DATA_SOURCE
+              value: "databricks"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: DATABRICKS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: telemetry-secrets
+                  key: databricks-host
+            - name: DATABRICKS_HTTP_PATH
+              valueFrom:
+                secretKeyRef:
+                  name: telemetry-secrets
+                  key: databricks-http-path
+            - name: DATABRICKS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: telemetry-secrets
+                  key: databricks-token
+            - name: DATABRICKS_CATALOG
+              valueFrom:
+                configMapKeyRef:
+                  name: telemetry-config
+                  key: databricks-catalog
+            - name: DATABRICKS_SCHEMA
+              valueFrom:
+                configMapKeyRef:
+                  name: telemetry-config
+                  key: databricks-schema
+          readinessProbe:
+            httpGet:
+              path: /docs
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /openapi.json
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: telemetry-backend
+spec:
+  selector:
+    app: telemetry-backend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP

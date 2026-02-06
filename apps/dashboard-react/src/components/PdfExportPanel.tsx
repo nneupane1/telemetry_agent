@@ -1,7 +1,8 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { Download, FileText, RefreshCcw } from "lucide-react"
-import axios from "axios"
+
+import { exportPdf } from "../services/apiClient"
 
 interface PdfExportPanelProps {
   subjectType: "vin" | "cohort"
@@ -12,24 +13,27 @@ interface PdfExportPanelProps {
 export default function PdfExportPanel({
   subjectType,
   subjectId,
-  title = "Export Report",
+  title = "PDF Export",
 }: PdfExportPanelProps) {
   const [loading, setLoading] = useState(false)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl)
+    }
+  }, [pdfUrl])
+
   async function generatePdf() {
     setLoading(true)
     setError(null)
-
     try {
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/export/pdf`,
-        { subject_type: subjectType, subject_id: subjectId },
-        { responseType: "blob" }
-      )
-
-      const blob = new Blob([res.data], { type: "application/pdf" })
+      const bytes = await exportPdf({
+        subject_type: subjectType,
+        subject_id: subjectId,
+      })
+      const blob = new Blob([bytes], { type: "application/pdf" })
       const url = URL.createObjectURL(blob)
       setPdfUrl(url)
     } catch {
@@ -41,43 +45,31 @@ export default function PdfExportPanel({
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="panel panel-glow p-6 space-y-4"
+      transition={{ duration: 0.24 }}
+      className="panel panel-glow p-5 space-y-4"
     >
-      {/* Header */}
       <div className="flex items-center gap-2">
-        <FileText className="text-neon-purple" size={18} />
-        <h3 className="text-sm font-medium">{title}</h3>
+        <FileText size={18} className="text-neon-cyan" />
+        <h3 className="text-base">{title}</h3>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap gap-2">
         <button
-          onClick={generatePdf}
+          onClick={() => void generatePdf()}
           disabled={loading}
-          className="
-            flex items-center gap-2
-            px-3 py-2 rounded-md text-sm
-            bg-neon-purple text-black
-            hover:opacity-90 transition
-          "
+          className="inline-flex items-center gap-2 rounded-lg px-3 py-2 bg-neon-cyan text-bg-primary font-medium disabled:opacity-60"
         >
           <RefreshCcw size={14} />
-          {loading ? "Generating…" : "Generate PDF"}
+          {loading ? "Generating..." : "Generate PDF"}
         </button>
 
         {pdfUrl && (
           <a
             href={pdfUrl}
             download={`${subjectType}-${subjectId}.pdf`}
-            className="
-              flex items-center gap-2
-              px-3 py-2 rounded-md text-sm
-              bg-bg-secondary border border-neon-purple/30
-              hover:text-neon-cyan transition
-            "
+            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 border border-neon-cyan/35 hover:bg-neon-cyan/10 transition-colors"
           >
             <Download size={14} />
             Download
@@ -85,20 +77,15 @@ export default function PdfExportPanel({
         )}
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="text-sm text-danger">
-          {error}
-        </div>
-      )}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
-      {/* Preview */}
       {pdfUrl && (
         <iframe
           src={pdfUrl}
-          className="w-full h-[420px] rounded-md border border-neon-purple/20"
+          className="w-full h-[420px] rounded-lg border border-neon-cyan/25"
         />
       )}
     </motion.section>
   )
 }
+

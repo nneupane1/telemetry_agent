@@ -14,7 +14,7 @@ Used by:
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, validator
 
@@ -129,6 +129,11 @@ class VinInterpretation(BaseModel):
     recommendations: List[Recommendation] = Field(
         default_factory=list,
         description="Ordered list of actionable recommendations",
+    )
+
+    evidence_summary: Optional[Dict[str, Dict[str, object]]] = Field(
+        None,
+        description="Consolidated evidence grouped by model and signal code",
     )
 
     generated_at: datetime = Field(

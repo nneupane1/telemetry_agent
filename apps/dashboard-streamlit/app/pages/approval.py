@@ -1,91 +1,76 @@
 """
-Approval Page.
-
-Allows operators to approve, reject, or escalate
-Action Packs with auditable decision logging.
+Approval page for Streamlit multipage mode.
 """
 
 from __future__ import annotations
 
-from datetime import datetime
 import streamlit as st
 
-# ------------------------------------------------------------
-# Page header
-# ------------------------------------------------------------
-
-st.markdown(
-    "<h1 class='neon-title'>Approval Queue</h1>",
-    unsafe_allow_html=True,
+from app.services.api_client import (
+    create_action_pack,
+    fetch_vin_interpretation,
+    list_approvals,
+    record_approval,
 )
 
-st.markdown(
-    "<p class='muted'>Review and decide on recommended actions.</p>",
-    unsafe_allow_html=True,
-)
-
-# ------------------------------------------------------------
-# VIN context
-# ------------------------------------------------------------
+st.title("Approval Queue")
 
 vin = st.session_state.get("selected_vin")
-
 if not vin:
-    st.warning("No VIN selected. Please select a VIN first.")
+    st.warning("No VIN selected. Use the main Fleet tab or Dashboard page first.")
     st.stop()
 
-st.markdown(
-    f"<p class='muted'>VIN: <strong>{vin}</strong></p>",
-    unsafe_allow_html=True,
-)
+st.caption(f"VIN: {vin}")
 
-# ------------------------------------------------------------
-# Placeholder Action Pack summary (API wiring later)
-# ------------------------------------------------------------
+try:
+    interpretation = fetch_vin_interpretation(vin)
+except Exception as exc:
+    st.error(f"Failed to load VIN interpretation: {exc}")
+    st.stop()
 
-st.markdown("<div class='panel'>", unsafe_allow_html=True)
-st.markdown(
-    """
-    <strong>Proposed Action</strong><br/>
-    Inspect fuel pressure system and related components within the next service window.
-    """,
-    unsafe_allow_html=True,
-)
-st.markdown("</div>", unsafe_allow_html=True)
+st.subheader("Proposed Action Pack")
+st.write(interpretation.get("summary"))
 
-# ------------------------------------------------------------
-# Decision input
-# ------------------------------------------------------------
+if st.button("Create Action Pack"):
+    payload = {
+        "subject_type": "VIN",
+        "subject_id": vin,
+        "title": f"Action Pack for {vin}",
+        "executive_summary": interpretation.get("summary", ""),
+        "recommendations": interpretation.get("recommendations", []),
+    }
+    try:
+        action_pack = create_action_pack(payload)
+        st.success(f"Created {action_pack.get('action_pack_id')}")
+        st.json(action_pack)
+    except Exception as exc:
+        st.error(f"Action pack creation failed: {exc}")
 
-decision = st.radio(
-    "Decision",
-    options=["Approve", "Reject", "Escalate"],
-    horizontal=True,
-)
+decision = st.radio("Decision", ["approve", "reject", "escalate"], horizontal=True)
+comment = st.text_area("Comment", placeholder="Provide rationale for this decision.")
+actor = st.text_input("Decided by", value="control-room-operator")
 
-comment = st.text_area(
-    "Comment (required)",
-    placeholder="Provide rationale for this decision...",
-)
-
-# ------------------------------------------------------------
-# Submit decision
-# ------------------------------------------------------------
-
-if st.button("Submit Decision", type="primary"):
+if st.button("Record Decision", type="primary"):
     if not comment.strip():
-        st.error("Comment is required for audit purposes.")
+        st.error("Comment is required.")
     else:
-        entry = {
-            "vin": vin,
-            "decision": decision,
-            "comment": comment.strip(),
-            "timestamp": datetime.utcnow().isoformat(),
-        }
+        try:
+            record = record_approval(
+                subject_type="vin",
+                subject_id=vin,
+                decision=decision,
+                comment=comment.strip(),
+                decided_by=actor,
+            )
+            st.success("Decision recorded.")
+            st.json(record)
+        except Exception as exc:
+            st.error(f"Approval write failed: {exc}")
 
-        st.session_state.approval_log.append(entry)
+if st.button("Refresh Approval History"):
+    try:
+        rows = list_approvals(subject_type="vin", subject_id=vin)
+        st.dataframe(rows, use_container_width=True)
+    except Exception as exc:
+        st.error(f"Failed to load approval history: {exc}")
 
-        st.success(f"Decision '{decision}' recorded for VIN {vin}.")
-
-        # Optional: clear comment box
-        st.session_state.selected_vin = vin

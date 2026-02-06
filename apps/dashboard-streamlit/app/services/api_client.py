@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 import requests
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 # ------------------------------------------------------------
 # Configuration
@@ -70,6 +70,13 @@ def fetch_cohort_interpretation(cohort_id: str) -> Dict[str, Any]:
     return _request("GET", f"/cohort/{cohort_id}")
 
 
+def create_action_pack(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Create an action pack from recommendations.
+    """
+    return _request("POST", "/action-pack/", json=payload)
+
+
 def fetch_chat_reply(
     message: str,
     context: Dict[str, Any] | None = None,
@@ -110,3 +117,39 @@ def export_pdf(
         )
 
     return response.content
+
+
+def record_approval(
+    *,
+    subject_type: str,
+    subject_id: str,
+    decision: str,
+    comment: str,
+    decided_by: Optional[str] = None,
+) -> Dict[str, Any]:
+    payload = {
+        "subject_type": subject_type,
+        "subject_id": subject_id,
+        "decision": decision,
+        "comment": comment,
+        "decided_by": decided_by,
+    }
+    return _request("POST", "/approval", json=payload)
+
+
+def list_approvals(
+    *,
+    subject_type: Optional[str] = None,
+    subject_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    query_parts = []
+    if subject_type:
+        query_parts.append(f"subject_type={subject_type}")
+    if subject_id:
+        query_parts.append(f"subject_id={subject_id}")
+
+    path = "/approval"
+    if query_parts:
+        path += "?" + "&".join(query_parts)
+
+    return _request("GET", path)

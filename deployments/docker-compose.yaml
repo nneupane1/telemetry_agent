@@ -1,0 +1,46 @@
+﻿version: "3.9"
+
+services:
+  backend-api:
+    build:
+      context: ../apps/backend-api
+      dockerfile: Dockerfile
+    container_name: telemetry-backend
+    env_file:
+      - ../.env
+    environment:
+      DATA_SOURCE: ${DATA_SOURCE:-sample}
+      APP_ENV: ${APP_ENV:-local}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data:/app/data:ro
+
+  dashboard-react:
+    build:
+      context: ../apps/dashboard-react
+      dockerfile: Dockerfile
+    container_name: telemetry-react
+    env_file:
+      - ../.env
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend-api
+
+  dashboard-streamlit:
+    build:
+      context: ../apps/dashboard-streamlit
+      dockerfile: Dockerfile
+    container_name: telemetry-streamlit
+    env_file:
+      - ../.env
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-http://backend-api:8000}
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend-api

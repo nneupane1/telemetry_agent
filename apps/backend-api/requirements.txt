@@ -10,6 +10,9 @@ pydantic==1.10.13
 # -------------------------------
 langgraph==0.0.40
 langchain==0.1.14
+langchain-core==0.1.53
+# Optional provider bridge used when OPENAI_API_KEY is configured.
+langchain-openai==0.1.6
 
 # -------------------------------
 # Databricks / data access
@@ -30,6 +33,7 @@ reportlab==4.1.0
 # Utilities
 # -------------------------------
 python-dotenv==1.0.1
+PyYAML==6.0.1
 
 # -------------------------------
 # Testing

@@ -44,6 +44,7 @@ export interface VinInterpretation {
   summary: string
   risk_level: "LOW" | "ELEVATED" | "HIGH" | "CRITICAL"
   recommendations: Recommendation[]
+  evidence_summary?: Record<string, Record<string, unknown>>
   model_version: string
 }
 
@@ -99,5 +100,34 @@ export async function createActionPack(payload: {
   recommendations: Recommendation[]
 }) {
   const { data } = await api.post("/action-pack", payload)
+  return data
+}
+
+export async function fetchChatReply(payload: {
+  message: string
+  context?: Record<string, unknown>
+}) {
+  const { data } = await api.post<{ reply: string }>("/chat", payload)
+  return data.reply
+}
+
+export async function exportPdf(payload: {
+  subject_type: "vin" | "cohort"
+  subject_id: string
+}) {
+  const { data } = await api.post<ArrayBuffer>("/export/pdf", payload, {
+    responseType: "arraybuffer",
+  })
+  return data
+}
+
+export async function recordApproval(payload: {
+  subject_type: string
+  subject_id: string
+  decision: "approve" | "reject" | "escalate"
+  comment: string
+  decided_by?: string
+}) {
+  const { data } = await api.post("/approval", payload)
   return data
 }

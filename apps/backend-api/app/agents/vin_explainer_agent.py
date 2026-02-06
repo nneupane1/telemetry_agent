@@ -12,6 +12,7 @@ Used by:
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Dict, List
 
 from app.models.vin import (
@@ -19,7 +20,6 @@ from app.models.vin import (
     Recommendation,
     VinInterpretation,
 )
-from app.utils.config import load_config
 from app.utils.logger import (
     get_logger,
     log_event,
@@ -36,7 +36,6 @@ class VinExplainerAgent:
     """
 
     def __init__(self, *, model_version: str) -> None:
-        self._config = load_config()
         self._model_version = model_version
 
     # -----------------------------------------------------------------
@@ -98,6 +97,49 @@ class VinExplainerAgent:
 
         return interpretation
 
+    def answer_question(
+        self,
+        *,
+        question: str,
+        context: Dict[str, Any],
+    ) -> str:
+        """
+        Provide bounded VIN-focused explainability answers for chat.
+        """
+        vin = str(context.get("vin", "UNKNOWN")).upper()
+        risk_level = context.get("risk_level")
+        recommendations = context.get("recommendations")
+        evidence_summary = context.get("evidence_summary")
+
+        recommendation_count = (
+            len(recommendations) if isinstance(recommendations, list) else None
+        )
+
+        if risk_level and recommendation_count is not None:
+            evidence_sources = (
+                ", ".join(sorted(evidence_summary.keys()))
+                if isinstance(evidence_summary, dict)
+                else "none"
+            )
+            return (
+                f"VIN {vin} is currently assessed as {risk_level}. "
+                f"There are {recommendation_count} recommendation(s) based on "
+                "predictive evidence from MH/MP/FIM signals. "
+                f"Evidence sources: {evidence_sources}."
+            )
+
+        if risk_level:
+            return (
+                f"VIN {vin} is currently assessed as {risk_level}. "
+                "Share recommendations/evidence context for a deeper explanation."
+            )
+
+        _ = question  # reserved for future prompt-based routing
+        return (
+            f"I can explain VIN {vin} risk signals and recommendations. "
+            "Provide risk level and evidence context for specific details."
+        )
+
     # -----------------------------------------------------------------
     # Internal helpers
     # -----------------------------------------------------------------
@@ -121,19 +163,44 @@ class VinExplainerAgent:
             "FIM": fim,
         }.items():
             for row in rows:
-                code = row.get("signal_code") or row.get("hi_code")
+                code = (
+                    row.get("signal_code")
+                    or row.get("hi_code")
+                    or row.get("trigger_code")
+                    or row.get("rootcause_code")
+                )
+                if not code:
+                    continue
+
                 ref_entry = ref.get(code, {})
+                family = ref_entry.get("family")
+                description = ref_entry.get(
+                    "description",
+                    "No description available",
+                )
+                if family and family != "UNKNOWN":
+                    description = f"{description} ({family})"
+
+                confidence = (
+                    row.get("confidence")
+                    or row.get("trigger_probability")
+                    or row.get("rootcause_probability")
+                    or 0.0
+                )
+                observed_at = (
+                    row.get("observed_at")
+                    or row.get("trigger_time")
+                    or row.get("event_time")
+                    or datetime.utcnow()
+                )
 
                 evidence.append(
                     EvidenceItem(
                         source_model=source,
                         signal_code=code,
-                        signal_description=ref_entry.get(
-                            "description",
-                            "No description available",
-                        ),
-                        confidence=float(row.get("confidence", 0.0)),
-                        observed_at=row["observed_at"],
+                        signal_description=description,
+                        confidence=float(confidence),
+                        observed_at=observed_at,
                     )
                 )
 
@@ -179,10 +246,14 @@ class VinExplainerAgent:
         """
 
         recommendations: List[Recommendation] = []
+        seen_signals = set()
 
         for ev in evidence:
             if ev.confidence < 0.7:
                 continue
+            if ev.signal_code in seen_signals:
+                continue
+            seen_signals.add(ev.signal_code)
 
             recommendations.append(
                 Recommendation(

@@ -1,155 +1,66 @@
 """
-Reference Data Loader.
+Reference Data Validation and Cache Builder.
 
-Loads semantic reference dictionaries (HI catalog, family maps,
-confidence mappings) from YAML / JSON files and persists them
-to the configured backend.
-
-Designed to be:
-- idempotent
-- environment-agnostic
-- safe for CI/CD execution
+Validates semantic dictionaries and writes normalized cache artifacts used by
+the backend runtime.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
-import sys
 from pathlib import Path
-from typing import Dict, Any
+import sys
 
-import yaml
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_ROOT = REPO_ROOT / "apps" / "backend-api"
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
+from app.services.reference_loader import ReferenceLoader
 from app.utils.config import load_config
-from app.utils.logger import get_logger
+from app.utils.logger import get_logger, log_event
 
 logger = get_logger(__name__)
 
 
-# ------------------------------------------------------------
-# Configuration
-# ------------------------------------------------------------
-
-REFERENCE_DIR = Path("data/reference")
-
-SUPPORTED_EXTENSIONS = {".yaml", ".yml", ".json"}
-
-
-# ------------------------------------------------------------
-# Load helpers
-# ------------------------------------------------------------
-
-def _load_file(path: Path) -> Dict[str, Any]:
-    """
-    Load a single YAML or JSON reference file.
-    """
-    logger.info("Loading reference file", extra={"path": str(path)})
-
-    if path.suffix in {".yaml", ".yml"}:
-        with path.open("r", encoding="utf-8") as f:
-            return yaml.safe_load(f)
-
-    if path.suffix == ".json":
-        with path.open("r", encoding="utf-8") as f:
-            return json.load(f)
-
-    raise ValueError(f"Unsupported reference file: {path}")
-
-
-def _validate_reference(name: str, data: Dict[str, Any]) -> None:
-    """
-    Minimal structural validation.
-    """
-    if not isinstance(data, dict):
-        raise ValueError(f"Reference '{name}' must be a dictionary")
-
-    if not data:
-        raise ValueError(f"Reference '{name}' is empty")
-
-    logger.info(
-        "Validated reference",
-        extra={"reference": name, "entries": len(data)},
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--output-dir",
+        default=".reference_cache",
+        help="Directory where normalized reference JSON files are written",
     )
+    return parser.parse_args()
 
-
-# ------------------------------------------------------------
-# Persistence layer (pluggable)
-# ------------------------------------------------------------
-
-def _persist_reference(
-    *,
-    name: str,
-    data: Dict[str, Any],
-    backend: str,
-) -> None:
-    """
-    Persist reference data to the configured backend.
-    """
-
-    # POC default: local JSON snapshot
-    if backend == "local":
-        out_dir = Path(".reference_cache")
-        out_dir.mkdir(exist_ok=True)
-
-        out_path = out_dir / f"{name}.json"
-        with out_path.open("w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-
-        logger.info(
-            "Reference persisted locally",
-            extra={"path": str(out_path)},
-        )
-        return
-
-    # Future backends (explicit, not magic)
-    if backend == "databricks":
-        raise NotImplementedError(
-            "Databricks reference persistence not yet implemented"
-        )
-
-    raise ValueError(f"Unknown reference backend: {backend}")
-
-
-# ------------------------------------------------------------
-# Main execution
-# ------------------------------------------------------------
 
 def main() -> None:
-    """
-    Load and persist all reference files.
-    """
+    args = parse_args()
     config = load_config()
-    backend = config.get("reference_backend", "local")
+    loader = ReferenceLoader()
 
-    if not REFERENCE_DIR.exists():
-        logger.error("Reference directory not found")
-        sys.exit(1)
+    bundle = loader.load_bundle()
+    merged = loader.load_reference_map()
 
-    reference_files = [
-        p for p in REFERENCE_DIR.iterdir()
-        if p.suffix in SUPPORTED_EXTENSIONS
-    ]
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    if not reference_files:
-        logger.error("No reference files found")
-        sys.exit(1)
+    for name, payload in bundle.items():
+        out_path = out_dir / f"{name}.json"
+        out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
-    logger.info(
-        "Starting reference data load",
-        extra={"file_count": len(reference_files)},
+    merged_path = out_dir / "reference_map.json"
+    merged_path.write_text(json.dumps(merged, indent=2), encoding="utf-8")
+
+    log_event(
+        logger,
+        "Reference cache generation complete",
+        extra={
+            "source_dir": config.data.reference_dir,
+            "output_dir": str(out_dir),
+            "signals": len(merged),
+        },
     )
-
-    for path in reference_files:
-        name = path.stem
-        data = _load_file(path)
-        _validate_reference(name, data)
-        _persist_reference(
-            name=name,
-            data=data,
-            backend=backend,
-        )
-
-    logger.info("Reference data load completed successfully")
 
 
 if __name__ == "__main__":

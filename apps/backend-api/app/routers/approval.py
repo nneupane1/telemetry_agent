@@ -51,6 +51,13 @@ def record_approval(request: ApprovalRequest) -> ApprovalRecord:
     Record an approval decision.
     """
 
+    subject_type = request.subject_type.lower()
+    if subject_type not in {"vin", "cohort"}:
+        raise HTTPException(
+            status_code=400,
+            detail="subject_type must be vin or cohort",
+        )
+
     decision = request.decision.lower()
     if decision not in {"approve", "reject", "escalate"}:
         raise HTTPException(
@@ -59,7 +66,7 @@ def record_approval(request: ApprovalRequest) -> ApprovalRecord:
         )
 
     record = store.record_decision(
-        subject_type=request.subject_type,
+        subject_type=subject_type,
         subject_id=request.subject_id,
         decision=decision,
         comment=request.comment,

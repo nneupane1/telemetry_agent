@@ -1,122 +1,225 @@
 """
-GenAI Predictive Interpreter — Operator Dashboard
+Operator Console (Streamlit).
 
-This Streamlit application is designed for control room operators
-and service specialists to:
-- inspect VIN-level evidence
-- review GenAI interpretations
-- approve or escalate recommended actions
-
-This file defines the application shell and navigation.
+Focused workflow:
+1. Select VIN and fetch interpretation
+2. Review evidence and recommendations
+3. Create/export action pack
+4. Capture approvals
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
 
-# ------------------------------------------------------------
-# Page configuration (must be first Streamlit call)
-# ------------------------------------------------------------
+from app.services.api_client import (
+    create_action_pack,
+    export_pdf,
+    fetch_chat_reply,
+    fetch_cohort_interpretation,
+    fetch_vin_interpretation,
+    list_approvals,
+    record_approval,
+)
+
+
+def _load_theme() -> None:
+    css_path = Path(__file__).parent / "theme" / "streamlit_neon_theme.css"
+    if css_path.exists():
+        st.markdown(
+            f"<style>{css_path.read_text(encoding='utf-8')}</style>",
+            unsafe_allow_html=True,
+        )
+
 
 st.set_page_config(
-    page_title="GenAI Operator Console",
-    page_icon="🧠",
+    page_title="Telemetry Operator Console",
+    page_icon="T",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
-
-# ------------------------------------------------------------
-# Global styling (dark / neon-lite)
-# ------------------------------------------------------------
-
-st.markdown(
-    """
-    <style>
-        body {
-            background-color: #05070D;
-            color: #E6E9F2;
-        }
-        .stSidebar {
-            background-color: #0A0F1F;
-        }
-        .neon-title {
-            color: #9D7BFF;
-            text-shadow: 0 0 12px rgba(157,123,255,0.4);
-        }
-        .muted {
-            color: #AAB0D6;
-        }
-        .panel {
-            background-color: #0E1428;
-            border: 1px solid rgba(157,123,255,0.15);
-            border-radius: 12px;
-            padding: 1rem;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-# ------------------------------------------------------------
-# Session state initialization
-# ------------------------------------------------------------
+_load_theme()
 
 if "selected_vin" not in st.session_state:
-    st.session_state.selected_vin = None
+    st.session_state.selected_vin = "WVWZZZ1KZ6W000001"
+if "vin_data" not in st.session_state:
+    st.session_state.vin_data = None
+if "approval_actor" not in st.session_state:
+    st.session_state.approval_actor = "control-room-operator"
 
-if "approval_log" not in st.session_state:
-    st.session_state.approval_log = []
+st.title("Telemetry Operator Console")
+st.caption("Databricks Unity Catalog telemetry interpreted by a multi-agent workflow.")
 
-# ------------------------------------------------------------
-# Sidebar navigation
-# ------------------------------------------------------------
-
-st.sidebar.markdown(
-    "<h2 class='neon-title'>Operator Console</h2>",
-    unsafe_allow_html=True,
+fleet_tab, evidence_tab, approval_tab, chat_tab = st.tabs(
+    ["Fleet", "Evidence", "Approval", "Chat"]
 )
 
-page = st.sidebar.radio(
-    "Navigate",
-    options=[
-        "VIN Lookup",
-        "Evidence Review",
-        "Approval Queue",
-    ],
-)
+with fleet_tab:
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        vin = st.text_input(
+            "VIN",
+            value=st.session_state.selected_vin,
+            help="Enter the VIN to inspect.",
+        ).strip().upper()
 
-st.sidebar.markdown(
-    "<p class='muted'>GenAI-powered predictive maintenance</p>",
-    unsafe_allow_html=True,
-)
+        if st.button("Load VIN Interpretation", type="primary"):
+            st.session_state.selected_vin = vin
+            with st.spinner("Loading VIN interpretation..."):
+                try:
+                    st.session_state.vin_data = fetch_vin_interpretation(vin)
+                    st.success(f"Loaded interpretation for {vin}")
+                except Exception as exc:
+                    st.error(f"VIN lookup failed: {exc}")
 
-# ------------------------------------------------------------
-# Page routing
-# ------------------------------------------------------------
+    with col2:
+        cohort_id = st.selectbox(
+            "Cohort",
+            options=["EURO6-DIESEL", "EURO5-DIESEL", "EV-FLEET"],
+        )
+        if st.button("Load Cohort Snapshot"):
+            with st.spinner("Loading cohort summary..."):
+                try:
+                    cohort = fetch_cohort_interpretation(cohort_id)
+                    st.metric(
+                        "Anomaly Count",
+                        len(cohort.get("anomalies", [])),
+                    )
+                    st.json(
+                        {
+                            "cohort_id": cohort.get("cohort_id"),
+                            "summary": cohort.get("summary"),
+                            "risk_distribution": cohort.get("risk_distribution"),
+                        }
+                    )
+                except Exception as exc:
+                    st.error(f"Cohort lookup failed: {exc}")
 
-if page == "VIN Lookup":
-    st.markdown("<h1 class='neon-title'>VIN Lookup</h1>", unsafe_allow_html=True)
-    st.markdown(
-        "<p class='muted'>Search and inspect individual vehicle risk.</p>",
-        unsafe_allow_html=True,
+    if st.session_state.vin_data:
+        st.subheader("VIN Summary")
+        st.write(st.session_state.vin_data.get("summary"))
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Risk Level", st.session_state.vin_data.get("risk_level", "N/A"))
+        c2.metric(
+            "Recommendations",
+            len(st.session_state.vin_data.get("recommendations", [])),
+        )
+        c3.metric(
+            "Evidence Sources",
+            len((st.session_state.vin_data.get("evidence_summary") or {}).keys()),
+        )
+
+with evidence_tab:
+    st.subheader("Evidence Drilldown")
+    vin_data = st.session_state.vin_data
+    if not vin_data:
+        st.info("Load a VIN in the Fleet tab first.")
+    else:
+        recommendations = vin_data.get("recommendations", [])
+        if not recommendations:
+            st.warning("No recommendation evidence available for this VIN.")
+        for idx, rec in enumerate(recommendations, start=1):
+            with st.expander(f"{idx}. {rec.get('title')} ({rec.get('urgency')})", expanded=(idx == 1)):
+                st.write(rec.get("rationale"))
+                evidence_rows = rec.get("evidence", [])
+                if evidence_rows:
+                    st.dataframe(evidence_rows, use_container_width=True)
+                else:
+                    st.caption("No evidence rows attached.")
+
+with approval_tab:
+    st.subheader("Action Pack and Approval")
+    vin_data = st.session_state.vin_data
+    if not vin_data:
+        st.info("Load a VIN in the Fleet tab first.")
+    else:
+        default_payload = {
+            "subject_type": "VIN",
+            "subject_id": vin_data["vin"],
+            "title": f"Action Pack for {vin_data['vin']}",
+            "executive_summary": vin_data["summary"],
+            "recommendations": vin_data.get("recommendations", []),
+        }
+
+        if st.button("Create Action Pack"):
+            try:
+                action_pack = create_action_pack(default_payload)
+                st.success(f"Created {action_pack.get('action_pack_id')}")
+                st.json(action_pack)
+            except Exception as exc:
+                st.error(f"Action pack creation failed: {exc}")
+
+        if st.button("Export VIN PDF"):
+            try:
+                pdf_bytes = export_pdf("vin", vin_data["vin"])
+                st.download_button(
+                    "Download VIN Report PDF",
+                    data=pdf_bytes,
+                    file_name=f"vin-{vin_data['vin']}.pdf",
+                    mime="application/pdf",
+                )
+            except Exception as exc:
+                st.error(f"PDF export failed: {exc}")
+
+        decision = st.radio(
+            "Decision",
+            options=["approve", "reject", "escalate"],
+            horizontal=True,
+        )
+        comment = st.text_area(
+            "Decision comment",
+            placeholder="Explain the rationale for this decision.",
+        )
+        st.session_state.approval_actor = st.text_input(
+            "Decided by",
+            value=st.session_state.approval_actor,
+        )
+
+        if st.button("Record Approval", type="primary"):
+            if not comment.strip():
+                st.error("Comment is required.")
+            else:
+                try:
+                    record = record_approval(
+                        subject_type="vin",
+                        subject_id=vin_data["vin"],
+                        decision=decision,
+                        comment=comment.strip(),
+                        decided_by=st.session_state.approval_actor,
+                    )
+                    st.success("Approval decision recorded.")
+                    st.json(record)
+                except Exception as exc:
+                    st.error(f"Approval write failed: {exc}")
+
+        if st.button("Refresh Approval Log"):
+            try:
+                rows = list_approvals(
+                    subject_type="vin",
+                    subject_id=vin_data["vin"],
+                )
+                st.dataframe(rows, use_container_width=True)
+            except Exception as exc:
+                st.error(f"Unable to load approvals: {exc}")
+
+with chat_tab:
+    st.subheader("Explainability Chat")
+    prompt = st.text_area(
+        "Question",
+        placeholder="Explain why this VIN is high risk.",
     )
+    if st.button("Ask"):
+        context = {}
+        if st.session_state.vin_data:
+            context = {
+                "vin": st.session_state.vin_data["vin"],
+                "risk_level": st.session_state.vin_data.get("risk_level"),
+                "evidence_summary": st.session_state.vin_data.get("evidence_summary"),
+            }
+        try:
+            reply = fetch_chat_reply(prompt, context=context)
+            st.write(reply)
+        except Exception as exc:
+            st.error(f"Chat request failed: {exc}")
 
-    st.info("VIN lookup UI will be loaded here.")
-
-elif page == "Evidence Review":
-    st.markdown("<h1 class='neon-title'>Evidence Review</h1>", unsafe_allow_html=True)
-    st.markdown(
-        "<p class='muted'>Inspect signals and supporting evidence.</p>",
-        unsafe_allow_html=True,
-    )
-
-    st.info("Evidence viewer UI will be loaded here.")
-
-elif page == "Approval Queue":
-    st.markdown("<h1 class='neon-title'>Approval Queue</h1>", unsafe_allow_html=True)
-    st.markdown(
-        "<p class='muted'>Approve, reject, or escalate Action Packs.</p>",
-        unsafe_allow_html=True,
-    )
-
-    st.info("Approval workflow UI will be loaded here.")

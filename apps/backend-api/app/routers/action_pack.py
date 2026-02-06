@@ -71,8 +71,8 @@ def create_action_pack(
 
     try:
         action_pack = interpreter.build_action_pack(
-            subject_type=payload.subject_type,
-            subject_id=payload.subject_id,
+            subject_type=payload.subject_type.upper(),
+            subject_id=payload.subject_id.strip(),
             title=payload.title,
             executive_summary=payload.executive_summary,
             recommendations=payload.recommendations,

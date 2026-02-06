@@ -5,7 +5,7 @@ Provides a controlled GenAI chat endpoint for
 explainability and interactive interpretation.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from app.services.genai_interpreter import GenAIInterpreterService
@@ -49,7 +49,10 @@ class ChatResponse(BaseModel):
 # ------------------------------------------------------------
 
 @router.post("", response_model=ChatResponse)
-def chat(request: ChatRequest) -> ChatResponse:
+def chat(
+    request: ChatRequest,
+    x_request_id: str | None = Header(default=None),
+) -> ChatResponse:
     """
     POST /chat
 
@@ -65,6 +68,7 @@ def chat(request: ChatRequest) -> ChatResponse:
         reply = genai_service.generate_chat_reply(
             user_message=request.message,
             context=request.context,
+            request_id=x_request_id,
         )
 
         return ChatResponse(reply=reply)

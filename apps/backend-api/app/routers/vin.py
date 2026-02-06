@@ -7,15 +7,18 @@ Thin HTTP layer over the GenAI interpreter.
 
 from __future__ import annotations
 
+from typing import Any, Dict
+
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from app.models.vin import VinInterpretation
 from app.services.genai_interpreter import GenAIInterpreter
-from app.utils.config import load_config
+from app.services.reference_loader import ReferenceLoader
 from app.utils.logger import get_logger, log_event
 
 router = APIRouter(prefix="/vin", tags=["vin"])
 logger = get_logger(__name__)
+reference_loader = ReferenceLoader()
 
 
 # ---------------------------------------------------------------------
@@ -26,12 +29,18 @@ def get_interpreter() -> GenAIInterpreter:
     return GenAIInterpreter(model_version="v1.0.0")
 
 
-def load_reference_map() -> dict:
+def load_reference_map() -> Dict[str, Dict[str, Any]]:
     """
-    Placeholder for reference dictionary loading.
-    In production this may load from file, cache, or DB.
+    Load merged semantic reference dictionary.
     """
-    return {}
+    try:
+        return reference_loader.load_reference_map()
+    except Exception:
+        log_event(
+            logger,
+            "Reference map load failed, using empty map fallback",
+        )
+        return {}
 
 
 # ---------------------------------------------------------------------

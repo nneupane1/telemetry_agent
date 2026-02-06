@@ -1,107 +1,59 @@
 """
-Configuration Verification Script.
-
-Validates application configuration and environment
-before running critical workflows.
-
-Intended to be used in:
-- CI pipelines
-- pre-deploy hooks
-- local sanity checks
+Configuration verification script.
 """
 
 from __future__ import annotations
 
-import os
+from pathlib import Path
 import sys
-from typing import Dict, Any
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_ROOT = REPO_ROOT / "apps" / "backend-api"
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.utils.config import load_config
-from app.utils.logger import get_logger
+from app.utils.logger import get_logger, log_event
 
 logger = get_logger(__name__)
 
 
-# ------------------------------------------------------------
-# Required configuration schema
-# ------------------------------------------------------------
-
-REQUIRED_KEYS = {
-    "api": [
-        "host",
-        "port",
-    ],
-    "genai": [
-        "provider",
-        "model",
-    ],
-    "reference_backend": [],
-}
-
-
-# ------------------------------------------------------------
-# Validators
-# ------------------------------------------------------------
-
-def _validate_section(
-    section: str,
-    config: Dict[str, Any],
-) -> None:
-    """
-    Validate presence of required keys in a section.
-    """
-    if section not in config:
-        raise ValueError(f"Missing config section: '{section}'")
-
-    for key in REQUIRED_KEYS[section]:
-        if key not in config[section]:
-            raise ValueError(
-                f"Missing config key: '{section}.{key}'"
-            )
-
-
-def _validate_env() -> None:
-    """
-    Validate required environment variables.
-    """
-    required_env = [
-        "API_BASE_URL",
-    ]
-
-    missing = [e for e in required_env if not os.getenv(e)]
-
-    if missing:
-        raise ValueError(
-            f"Missing required environment variables: {missing}"
-        )
-
-
-# ------------------------------------------------------------
-# Main execution
-# ------------------------------------------------------------
-
 def main() -> None:
-    """
-    Run configuration verification.
-    """
-    logger.info("Starting configuration verification")
-
     config = load_config()
 
-    for section in REQUIRED_KEYS:
-        _validate_section(section, config)
+    if config.data.source == "databricks" and config.databricks is None:
+        raise RuntimeError(
+            "DATA_SOURCE=databricks requires Databricks credentials"
+        )
 
-    _validate_env()
+    reference_dir = Path(config.data.reference_dir)
+    if not reference_dir.exists():
+        raise RuntimeError(
+            f"Reference directory missing: {reference_dir}"
+        )
 
-    logger.info("Configuration verification successful")
+    sample_file = Path(config.data.sample_file)
+    if config.data.source == "sample" and not sample_file.exists():
+        raise RuntimeError(
+            f"Sample data file missing: {sample_file}"
+        )
+
+    log_event(
+        logger,
+        "Configuration verification successful",
+        extra={
+            "env": config.env,
+            "data_source": config.data.source,
+            "reference_dir": str(reference_dir),
+            "sample_file": str(sample_file),
+            "langgraph_enabled": config.features.enable_langgraph,
+        },
+    )
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        logger.error(
-            "Configuration verification failed",
-            extra={"error": str(exc)},
-        )
+        logger.error(str(exc))
         sys.exit(1)

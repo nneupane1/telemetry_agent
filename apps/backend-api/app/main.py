@@ -10,7 +10,14 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import vin, cohort, action_pack
+from app.routers import (
+    action_pack,
+    approval,
+    chat,
+    cohort,
+    export,
+    vin,
+)
 from app.utils.config import load_config
 from app.utils.logger import get_logger, log_event
 
@@ -22,7 +29,12 @@ def create_app() -> FastAPI:
     Create and configure the FastAPI application.
     """
 
-    config = load_config()
+    try:
+        config = load_config()
+        env_name = config.env
+    except Exception:
+        config = None
+        env_name = "unconfigured"
 
     app = FastAPI(
         title="GenAI Predictive Interpreter Platform",
@@ -49,17 +61,24 @@ def create_app() -> FastAPI:
     app.include_router(vin.router)
     app.include_router(cohort.router)
     app.include_router(action_pack.router)
+    app.include_router(chat.router)
+    app.include_router(export.router)
+    app.include_router(approval.router)
 
     # -----------------------------------------------------------------
     # Lifecycle hooks
     # -----------------------------------------------------------------
+
+    @app.get("/health", tags=["ops"])
+    def health() -> dict:
+        return {"status": "ok", "service": "genai-predictive-backend"}
 
     @app.on_event("startup")
     def on_startup() -> None:
         log_event(
             logger,
             "Application startup",
-            extra={"env": config.env},
+            extra={"env": env_name},
         )
 
     @app.on_event("shutdown")

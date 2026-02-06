@@ -44,6 +44,7 @@ def test_interpret_vin_end_to_end(monkeypatch):
     assert isinstance(result, VinInterpretation)
     assert result.vin == "VIN123"
     assert result.recommendations
+    assert result.evidence_summary
     assert result.model_version == "test"
 
 

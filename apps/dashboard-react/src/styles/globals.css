@@ -2,93 +2,112 @@
 @tailwind components;
 @tailwind utilities;
 
-/* --------------------------------------------------
-   Base resets & typography
--------------------------------------------------- */
+:root {
+  --aurora-cyan: rgba(66, 229, 255, 0.35);
+  --aurora-amber: rgba(255, 140, 66, 0.3);
+  --aurora-mint: rgba(124, 247, 165, 0.2);
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
   }
 
   body {
-    background-color: theme(colors.bg.primary);
-    color: theme(colors.text.primary);
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    @apply font-body bg-bg-primary text-text-primary;
+    font-feature-settings: "liga" 1, "ss01" 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display;
+  }
+
+  code {
+    @apply font-mono;
   }
 
   ::selection {
-    background: rgba(157, 123, 255, 0.35);
+    background: rgba(66, 229, 255, 0.35);
   }
 }
 
-/* --------------------------------------------------
-   Reusable cinematic utilities
--------------------------------------------------- */
 @layer utilities {
-  /* Neon glow text */
-  .text-neon-cyan {
-    color: theme(colors.neon.cyan);
-    text-shadow:
-      0 0 6px rgba(60, 242, 255, 0.6),
-      0 0 18px rgba(60, 242, 255, 0.35);
-  }
-
-  .text-neon-purple {
-    color: theme(colors.neon.purple);
-    text-shadow:
-      0 0 6px rgba(157, 123, 255, 0.6),
-      0 0 18px rgba(157, 123, 255, 0.35);
-  }
-
-  /* Neon bordered panels */
   .panel {
-    background-color: theme(colors.bg.panel);
-    border: 1px solid rgba(157, 123, 255, 0.15);
-    border-radius: 0.75rem;
-    backdrop-filter: blur(6px);
+    @apply rounded-xl border border-neon-cyan/20 bg-bg-panel/80 backdrop-blur-md;
   }
 
   .panel-glow {
-    box-shadow: theme(boxShadow.neonPurple);
+    box-shadow: 0 0 0 1px rgba(66, 229, 255, 0.16), 0 0 28px rgba(66, 229, 255, 0.14);
   }
 
-  /* Subtle hover lift */
   .hover-lift {
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease;
   }
 
   .hover-lift:hover {
-    transform: translateY(-4px);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(6, 16, 23, 0.35);
+    border-color: rgba(66, 229, 255, 0.4);
   }
 
-  /* Glassy divider */
   .divider {
     height: 1px;
-    background: linear-gradient(
-      to right,
-      transparent,
-      rgba(157, 123, 255, 0.4),
-      transparent
-    );
+    background: linear-gradient(to right, transparent, rgba(66, 229, 255, 0.45), transparent);
+  }
+
+  .aurora-bg {
+    background:
+      radial-gradient(circle at 14% 16%, var(--aurora-cyan), transparent 42%),
+      radial-gradient(circle at 87% 11%, var(--aurora-amber), transparent 34%),
+      radial-gradient(circle at 45% 95%, var(--aurora-mint), transparent 56%),
+      linear-gradient(140deg, #061017 0%, #0a1a26 42%, #102635 100%);
+  }
+
+  .text-kicker {
+    @apply uppercase tracking-[0.18em] text-xs text-text-muted;
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium;
+  }
+
+  .chip-cyan {
+    @apply chip border-neon-cyan/30 bg-neon-cyan/10 text-neon-cyan;
+  }
+
+  .chip-amber {
+    @apply chip border-neon-orange/35 bg-neon-orange/10 text-neon-orange;
+  }
+
+  .chip-mint {
+    @apply chip border-success/40 bg-success/10 text-success;
+  }
+
+  .glass-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 34px 34px;
   }
 }
 
-/* --------------------------------------------------
-   Scrollbar (minimal, cinematic)
--------------------------------------------------- */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #05070d;
+  background: #081521;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(157, 123, 255, 0.35);
-  border-radius: 4px;
+  background: rgba(66, 229, 255, 0.35);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(157, 123, 255, 0.55);
+  background: rgba(66, 229, 255, 0.55);
 }
+

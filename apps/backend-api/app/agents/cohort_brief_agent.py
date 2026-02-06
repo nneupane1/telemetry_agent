@@ -90,6 +90,42 @@ class CohortBriefAgent:
 
         return interpretation
 
+    def answer_question(
+        self,
+        *,
+        question: str,
+        context: Dict[str, Any],
+    ) -> str:
+        """
+        Provide bounded cohort explainability answers for chat.
+        """
+        cohort_id = str(context.get("cohort_id", "UNKNOWN"))
+        anomaly_count = context.get("anomaly_count")
+        risk_distribution = context.get("risk_distribution")
+
+        if isinstance(risk_distribution, dict):
+            parts = [
+                f"{level.upper()}={count}"
+                for level, count in risk_distribution.items()
+            ]
+            return (
+                f"Cohort {cohort_id} risk distribution: "
+                + ", ".join(parts)
+                + "."
+            )
+
+        if anomaly_count is not None:
+            return (
+                f"Cohort {cohort_id} currently has {anomaly_count} "
+                "reported anomaly pattern(s)."
+            )
+
+        _ = question  # reserved for future prompt-based routing
+        return (
+            f"I can explain cohort {cohort_id} anomalies, risk distribution, "
+            "and summary trends. Provide cohort metrics/anomaly context."
+        )
+
     # -----------------------------------------------------------------
     # Internal helpers
     # -----------------------------------------------------------------
@@ -98,30 +134,44 @@ class CohortBriefAgent:
         self,
         raw_metrics: List[Dict[str, Any]],
     ) -> List[CohortMetric]:
-        return [
-            CohortMetric(
-                name=m["metric_name"],
-                value=float(m["metric_value"]),
-                unit=m.get("unit"),
-                description=m.get("description", ""),
+        metrics: List[CohortMetric] = []
+        for metric in raw_metrics:
+            name = metric.get("metric_name") or metric.get("name")
+            if not name:
+                continue
+            value = metric.get("metric_value", metric.get("value", 0.0))
+            metrics.append(
+                CohortMetric(
+                    name=str(name),
+                    value=float(value),
+                    unit=metric.get("unit"),
+                    description=metric.get("description", ""),
+                )
             )
-            for m in raw_metrics
-        ]
+        return metrics
 
     def _build_anomalies(
         self,
         raw_anomalies: List[Dict[str, Any]],
     ) -> List[CohortAnomaly]:
-        return [
-            CohortAnomaly(
-                title=a["title"],
-                description=a["description"],
-                affected_vin_count=int(a["affected_vin_count"]),
-                severity=a["severity"],
-                related_signals=a.get("related_signals", []),
+        anomalies: List[CohortAnomaly] = []
+        for anomaly in raw_anomalies:
+            title = anomaly.get("title")
+            description = anomaly.get("description")
+            if not title or not description:
+                continue
+            anomalies.append(
+                CohortAnomaly(
+                    title=str(title),
+                    description=str(description),
+                    affected_vin_count=int(
+                        anomaly.get("affected_vin_count", 1)
+                    ),
+                    severity=str(anomaly.get("severity", "MEDIUM")),
+                    related_signals=anomaly.get("related_signals", []),
+                )
             )
-            for a in raw_anomalies
-        ]
+        return anomalies
 
     def _generate_summary(
         self,

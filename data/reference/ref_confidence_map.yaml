@@ -1,0 +1,13 @@
+﻿ranges:
+  - min: 0.00
+    max: 0.39
+    label: low confidence
+  - min: 0.40
+    max: 0.69
+    label: moderate confidence
+  - min: 0.70
+    max: 0.84
+    label: high confidence
+  - min: 0.85
+    max: 1.00
+    label: very high confidence

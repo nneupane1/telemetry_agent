@@ -12,6 +12,7 @@ Design goals:
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import uuid
 from contextvars import ContextVar
@@ -107,13 +108,19 @@ def get_logger(name: str) -> logging.Logger:
     Create or retrieve a configured logger.
     """
 
-    config = load_config()
     logger = logging.getLogger(name)
 
     if logger.handlers:
         return logger  # already configured
 
-    logger.setLevel(config.log_level.upper())
+    # Keep logger usable even when full app config is unavailable
+    # (e.g., unit tests without Databricks/OpenAI env vars).
+    try:
+        log_level = load_config().log_level.upper()
+    except Exception:
+        log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+
+    logger.setLevel(log_level)
     logger.propagate = False
 
     handler = logging.StreamHandler(sys.stdout)

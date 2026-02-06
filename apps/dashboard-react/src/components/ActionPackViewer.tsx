@@ -1,8 +1,7 @@
 import { motion } from "framer-motion"
-import { AlertTriangle, CheckCircle } from "lucide-react"
+import { AlertTriangle, ShieldAlert, Sparkles } from "lucide-react"
 
 import { getRiskStyle } from "../theme/neonTheme"
-import { staggerContainer, staggerItem } from "../theme/animations"
 
 interface EvidenceItem {
   signal_code: string
@@ -14,6 +13,7 @@ interface Recommendation {
   title: string
   rationale: string
   urgency: "LOW" | "MEDIUM" | "HIGH"
+  suggested_action?: string
   evidence: EvidenceItem[]
 }
 
@@ -29,99 +29,72 @@ export default function ActionPackViewer({
   recommendations,
 }: ActionPackViewerProps) {
   return (
-    <motion.section
-      variants={staggerContainer}
-      initial="hidden"
-      animate="visible"
-      className="panel panel-glow p-6 space-y-6"
-    >
-      {/* Header */}
+    <section className="panel panel-glow p-6 space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-neon-purple">
-          {title}
-        </h2>
-        <p className="mt-2 text-sm text-text-secondary">
-          {executiveSummary}
-        </p>
+        <div className="text-kicker">Action Pack</div>
+        <h2 className="text-xl">{title}</h2>
+        <p className="mt-2 text-sm text-text-secondary leading-relaxed">{executiveSummary}</p>
       </div>
 
       <div className="divider" />
 
-      {/* Recommendations */}
       <div className="space-y-4">
-        {recommendations.map((rec, idx) => {
-          const style = getRiskStyle(
-            rec.urgency === "HIGH" ? "HIGH" : "ELEVATED"
-          )
+        {recommendations.length === 0 && (
+          <div className="panel p-4 text-sm text-text-secondary">
+            No active recommendations for this subject.
+          </div>
+        )}
+
+        {recommendations.map((recommendation, index) => {
+          const visual = getRiskStyle(recommendation.urgency === "HIGH" ? "HIGH" : "ELEVATED")
 
           return (
-            <motion.div
-              key={idx}
-              variants={staggerItem}
-              className={`
-                rounded-lg border p-4
-                ${style.border}
-                ${style.bg}
-              `}
+            <motion.article
+              key={`${recommendation.title}-${index}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.06 }}
+              className={`rounded-xl border ${visual.border} ${visual.bg} p-4`}
             >
               <div className="flex items-start gap-3">
-                {rec.urgency === "HIGH" ? (
-                  <AlertTriangle
-                    className={`mt-1 ${style.text}`}
-                    size={18}
-                  />
+                {recommendation.urgency === "HIGH" ? (
+                  <ShieldAlert className={visual.text} size={20} />
                 ) : (
-                  <CheckCircle
-                    className={`mt-1 ${style.text}`}
-                    size={18}
-                  />
+                  <Sparkles className={visual.text} size={20} />
                 )}
-
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <h3 className={`font-medium ${style.text}`}>
-                      {rec.title}
-                    </h3>
-                    <span
-                      className={`
-                        text-xs px-2 py-1 rounded-full
-                        border ${style.border}
-                        ${style.text}
-                      `}
-                    >
-                      {rec.urgency}
-                    </span>
+                <div className="flex-1 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className={`font-display text-base ${visual.text}`}>{recommendation.title}</h3>
+                    <span className={`chip ${visual.border} ${visual.text}`}>{recommendation.urgency}</span>
                   </div>
+                  <p className="text-sm text-text-secondary">{recommendation.rationale}</p>
+                  {recommendation.suggested_action && (
+                    <p className="text-sm text-text-primary">
+                      <AlertTriangle size={14} className="inline mr-1 text-neon-orange" />
+                      {recommendation.suggested_action}
+                    </p>
+                  )}
 
-                  <p className="mt-1 text-sm text-text-secondary">
-                    {rec.rationale}
-                  </p>
-
-                  {/* Evidence */}
-                  {rec.evidence.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {rec.evidence.map((ev, i) => (
+                  {recommendation.evidence.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {recommendation.evidence.map((evidence, evIndex) => (
                         <span
-                          key={i}
-                          className="
-                            text-xs px-2 py-1 rounded-md
-                            bg-bg-secondary
-                            border border-neon-purple/20
-                            text-text-muted
-                          "
+                          key={`${evidence.signal_code}-${evIndex}`}
+                          className="chip-cyan"
+                          title={evidence.signal_description}
                         >
-                          {ev.signal_code} ·{" "}
-                          {Math.round(ev.confidence * 100)}%
+                          {evidence.signal_code} {Math.round(evidence.confidence * 100)}%
                         </span>
                       ))}
                     </div>
                   )}
                 </div>
               </div>
-            </motion.div>
+            </motion.article>
           )
         })}
       </div>
-    </motion.section>
+    </section>
   )
 }
+

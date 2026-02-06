@@ -1,0 +1,49 @@
+﻿/* Streamlit neon atmosphere */
+:root {
+  --bg-primary: #061017;
+  --bg-secondary: #0d1d29;
+  --text-primary: #e8f7ff;
+  --text-muted: #8ab4cc;
+  --accent: #42e5ff;
+  --accent-alt: #ffb347;
+}
+
+body, [data-testid="stAppViewContainer"] {
+  background:
+    radial-gradient(circle at 18% 20%, rgba(66, 229, 255, 0.12), transparent 42%),
+    radial-gradient(circle at 82% 16%, rgba(255, 179, 71, 0.12), transparent 34%),
+    linear-gradient(135deg, #061017 0%, #091620 45%, #0d1d29 100%);
+  color: var(--text-primary);
+}
+
+[data-testid="stSidebar"] {
+  background-color: rgba(6, 16, 23, 0.92);
+  border-right: 1px solid rgba(66, 229, 255, 0.22);
+}
+
+.block-container {
+  padding-top: 1rem;
+}
+
+h1, h2, h3 {
+  color: var(--accent);
+}
+
+.stMetric {
+  background: rgba(66, 229, 255, 0.08);
+  border: 1px solid rgba(66, 229, 255, 0.26);
+  border-radius: 12px;
+  padding: 0.8rem;
+}
+
+[data-testid="stTextInput"] input,
+[data-testid="stTextArea"] textarea {
+  border-radius: 10px;
+  border: 1px solid rgba(66, 229, 255, 0.22);
+}
+
+.stButton > button {
+  border-radius: 10px;
+  border: 1px solid rgba(66, 229, 255, 0.3);
+  background: linear-gradient(90deg, rgba(66, 229, 255, 0.2), rgba(255, 179, 71, 0.2));
+}

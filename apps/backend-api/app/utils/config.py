@@ -1,12 +1,10 @@
 """
 Central configuration management for the GenAI Predictive Interpreter Platform.
 
-Design principles:
-- Strong typing & validation (Pydantic)
-- Environment-aware (local / dev / prod)
-- No hardcoded secrets
-- LLM-provider agnostic
-- Safe defaults for POC, strict for prod
+Key goals:
+- Typed, validated configuration
+- Dual data-source support (Databricks Unity Catalog or sample files)
+- Optional LLM configuration so local development is not blocked by secrets
 """
 
 from __future__ import annotations
@@ -18,11 +16,8 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, SecretStr, ValidationError
 
 
-# ---------------------------------------------------------------------
-# Environment
-# ---------------------------------------------------------------------
-
 Environment = Literal["local", "dev", "prod"]
+DataSource = Literal["databricks", "sample"]
 
 
 def _get_env(name: str, default: Optional[str] = None) -> str:
@@ -32,36 +27,27 @@ def _get_env(name: str, default: Optional[str] = None) -> str:
     return value
 
 
-# ---------------------------------------------------------------------
-# Databricks Configuration
-# ---------------------------------------------------------------------
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
 
 class DatabricksConfig(BaseModel):
-    """
-    Databricks / Unity Catalog configuration.
-    """
-
     host: str = Field(..., description="Databricks workspace URL")
     http_path: str = Field(..., description="SQL Warehouse HTTP path")
     token: SecretStr = Field(..., description="Databricks access token")
-    catalog: str = Field(..., description="Unity Catalog name")
-    schema: str = Field(..., description="Default schema")
+    catalog: str = Field(..., description="Unity Catalog catalog name")
+    schema: str = Field(..., description="Unity Catalog schema name")
 
     class Config:
         frozen = True
 
 
-# ---------------------------------------------------------------------
-# LLM Configuration
-# ---------------------------------------------------------------------
-
 class OpenAIConfig(BaseModel):
-    """
-    OpenAI configuration (primary for POC).
-    """
-
     api_key: SecretStr = Field(..., description="OpenAI API key")
-    model: str = Field(default="gpt-4.1-mini", description="LLM model name")
+    model: str = Field(default="gpt-4.1-mini", description="LLM model")
     temperature: float = Field(default=0.2, ge=0.0, le=1.0)
     max_tokens: int = Field(default=1024, gt=128)
 
@@ -70,27 +56,32 @@ class OpenAIConfig(BaseModel):
 
 
 class LLMConfig(BaseModel):
-    """
-    Abstract LLM configuration.
-    Extend this to support OSS models (LLaMA, Mistral, etc.).
-    """
-
-    provider: Literal["openai"] = Field(default="openai")
+    provider: Literal["openai", "none"] = Field(default="none")
     openai: Optional[OpenAIConfig] = None
 
     class Config:
         frozen = True
 
 
-# ---------------------------------------------------------------------
-# Email / Reporting Configuration
-# ---------------------------------------------------------------------
+class DataConfig(BaseModel):
+    source: DataSource = Field(
+        default="sample",
+        description="Primary telemetry source",
+    )
+    reference_dir: str = Field(default="data/reference")
+    sample_file: str = Field(default="data/sample/sample_vin_data.json")
+
+    mart_mh_table: str = Field(default="mart_mh_hi_snapshot_daily")
+    mart_mp_table: str = Field(default="mart_mp_triggers_daily")
+    mart_fim_table: str = Field(default="mart_fim_rootcause_daily")
+    mart_cohort_metrics_table: str = Field(default="mart_cohort_metrics_daily")
+    mart_cohort_anomalies_table: str = Field(default="mart_cohort_anomalies_daily")
+
+    class Config:
+        frozen = True
+
 
 class EmailConfig(BaseModel):
-    """
-    SMTP email configuration for report delivery.
-    """
-
     enabled: bool = Field(default=False)
     smtp_host: Optional[str] = None
     smtp_port: Optional[int] = None
@@ -102,16 +93,9 @@ class EmailConfig(BaseModel):
         frozen = True
 
 
-# ---------------------------------------------------------------------
-# Feature Flags
-# ---------------------------------------------------------------------
-
 class FeatureFlags(BaseModel):
-    """
-    Feature flags for controlling behavior across environments.
-    """
-
     enable_genai: bool = True
+    enable_langgraph: bool = True
     enable_pdf_export: bool = True
     enable_email_delivery: bool = False
     strict_validation: bool = False
@@ -120,20 +104,13 @@ class FeatureFlags(BaseModel):
         frozen = True
 
 
-# ---------------------------------------------------------------------
-# Application Configuration
-# ---------------------------------------------------------------------
-
 class AppConfig(BaseModel):
-    """
-    Root application configuration object.
-    """
-
-    env: Environment
+    env: Environment = Field(default="local")
     service_name: str = "genai-predictive-backend"
     log_level: str = Field(default="INFO")
 
-    databricks: DatabricksConfig
+    data: DataConfig
+    databricks: Optional[DatabricksConfig] = None
     llm: LLMConfig
     email: EmailConfig
     features: FeatureFlags
@@ -142,64 +119,115 @@ class AppConfig(BaseModel):
         frozen = True
 
 
-# ---------------------------------------------------------------------
-# Config Loader
-# ---------------------------------------------------------------------
+def _load_optional_databricks(source: DataSource) -> Optional[DatabricksConfig]:
+    required = [
+        "DATABRICKS_HOST",
+        "DATABRICKS_HTTP_PATH",
+        "DATABRICKS_TOKEN",
+        "DATABRICKS_CATALOG",
+        "DATABRICKS_SCHEMA",
+    ]
+
+    available = [k for k in required if os.getenv(k)]
+
+    if source == "databricks" and len(available) < len(required):
+        missing = [k for k in required if not os.getenv(k)]
+        raise RuntimeError(
+            "DATA_SOURCE=databricks requires Databricks settings: "
+            + ", ".join(missing)
+        )
+
+    if not available:
+        return None
+
+    return DatabricksConfig(
+        host=_get_env("DATABRICKS_HOST"),
+        http_path=_get_env("DATABRICKS_HTTP_PATH"),
+        token=SecretStr(_get_env("DATABRICKS_TOKEN")),
+        catalog=_get_env("DATABRICKS_CATALOG"),
+        schema=_get_env("DATABRICKS_SCHEMA"),
+    )
+
+
+def _load_llm() -> LLMConfig:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return LLMConfig(provider="none", openai=None)
+
+    openai_cfg = OpenAIConfig(
+        api_key=SecretStr(api_key),
+        model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+        temperature=float(os.getenv("OPENAI_TEMPERATURE", "0.2")),
+        max_tokens=int(os.getenv("OPENAI_MAX_TOKENS", "1024")),
+    )
+    return LLMConfig(provider="openai", openai=openai_cfg)
+
 
 @lru_cache(maxsize=1)
 def load_config() -> AppConfig:
     """
-    Load and validate application configuration.
-    Cached to ensure singleton behavior.
+    Load and validate runtime configuration.
     """
 
     try:
         env: Environment = _get_env("APP_ENV", "local")  # type: ignore
+        data_source: DataSource = _get_env("DATA_SOURCE", "sample")  # type: ignore
 
-        databricks = DatabricksConfig(
-            host=_get_env("DATABRICKS_HOST"),
-            http_path=_get_env("DATABRICKS_HTTP_PATH"),
-            token=SecretStr(_get_env("DATABRICKS_TOKEN")),
-            catalog=_get_env("DATABRICKS_CATALOG"),
-            schema=_get_env("DATABRICKS_SCHEMA"),
+        data = DataConfig(
+            source=data_source,
+            reference_dir=os.getenv("REFERENCE_DIR", "data/reference"),
+            sample_file=os.getenv("SAMPLE_DATA_FILE", "data/sample/sample_vin_data.json"),
+            mart_mh_table=os.getenv("MART_MH_TABLE", "mart_mh_hi_snapshot_daily"),
+            mart_mp_table=os.getenv("MART_MP_TABLE", "mart_mp_triggers_daily"),
+            mart_fim_table=os.getenv("MART_FIM_TABLE", "mart_fim_rootcause_daily"),
+            mart_cohort_metrics_table=os.getenv(
+                "MART_COHORT_METRICS_TABLE",
+                "mart_cohort_metrics_daily",
+            ),
+            mart_cohort_anomalies_table=os.getenv(
+                "MART_COHORT_ANOMALIES_TABLE",
+                "mart_cohort_anomalies_daily",
+            ),
         )
 
-        openai_cfg = OpenAIConfig(
-            api_key=SecretStr(_get_env("OPENAI_API_KEY")),
-            model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-            temperature=float(os.getenv("OPENAI_TEMPERATURE", "0.2")),
-            max_tokens=int(os.getenv("OPENAI_MAX_TOKENS", "1024")),
-        )
-
-        llm = LLMConfig(
-            provider="openai",
-            openai=openai_cfg,
-        )
+        databricks = _load_optional_databricks(data_source)
+        llm = _load_llm()
 
         email = EmailConfig(
-            enabled=os.getenv("EMAIL_ENABLED", "false").lower() == "true",
+            enabled=_env_bool("EMAIL_ENABLED", False),
             smtp_host=os.getenv("SMTP_HOST"),
             smtp_port=int(os.getenv("SMTP_PORT", "0")) or None,
             username=os.getenv("SMTP_USERNAME"),
-            password=SecretStr(os.getenv("SMTP_PASSWORD")) if os.getenv("SMTP_PASSWORD") else None,
+            password=SecretStr(os.getenv("SMTP_PASSWORD"))
+            if os.getenv("SMTP_PASSWORD")
+            else None,
             from_address=os.getenv("EMAIL_FROM"),
         )
 
         features = FeatureFlags(
-            enable_genai=os.getenv("FEATURE_GENAI", "true").lower() == "true",
-            enable_pdf_export=os.getenv("FEATURE_PDF", "true").lower() == "true",
-            enable_email_delivery=os.getenv("FEATURE_EMAIL", "false").lower() == "true",
+            enable_genai=_env_bool("FEATURE_GENAI", True),
+            enable_langgraph=_env_bool("FEATURE_LANGGRAPH", True),
+            enable_pdf_export=_env_bool("FEATURE_PDF", True),
+            enable_email_delivery=_env_bool("FEATURE_EMAIL", False),
             strict_validation=env == "prod",
         )
+
+        # In production, block sample mode by default.
+        if env == "prod" and data_source != "databricks":
+            raise RuntimeError(
+                "APP_ENV=prod requires DATA_SOURCE=databricks."
+            )
 
         return AppConfig(
             env=env,
             log_level=os.getenv("LOG_LEVEL", "INFO"),
+            data=data,
             databricks=databricks,
             llm=llm,
             email=email,
             features=features,
         )
 
-    except ValidationError as e:
-        raise RuntimeError(f"Invalid configuration: {e}") from e
+    except ValidationError as exc:
+        raise RuntimeError(f"Invalid configuration: {exc}") from exc
+

@@ -1,0 +1,31 @@
+version: "3.9"
+
+# Local-test add-on overlay.
+# Usage:
+# docker compose -f deployments/docker-compose.yaml -f deployments/docker-compose.local-test.yaml up -d --build
+#
+# This file intentionally does NOT replace or modify Kubernetes logic.
+
+services:
+  backend-api:
+    environment:
+      APP_ENV: local
+      DATA_SOURCE: sample
+      FEATURE_LANGGRAPH: "false"
+      FEATURE_GENAI: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../data:/app/data:ro
+      - ../scripts:/app/scripts:ro
+
+  dashboard-react:
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    ports:
+      - "3001:3000"
+
+  dashboard-streamlit:
+    environment:
+      API_BASE_URL: http://backend-api:8000
+    ports:
+      - "8502:8501"

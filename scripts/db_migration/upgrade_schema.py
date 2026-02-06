@@ -17,6 +17,11 @@ import sys
 from pathlib import Path
 from typing import Callable, Dict
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_ROOT = REPO_ROOT / "apps" / "backend-api"
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
+
 from app.utils.config import load_config
 from app.utils.logger import get_logger
 
