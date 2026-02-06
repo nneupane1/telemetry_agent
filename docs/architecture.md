@@ -31,6 +31,7 @@ The system does not replace predictive models. It interprets their outputs consi
 
 ### API and delivery
 - FastAPI routers return interpretation JSON.
+- Chat supports REST primary transport and WebSocket fallback transport (`/chat/ws`) for latency-sensitive scenarios.
 - PDF export uses ReportLab.
 - Approval endpoints provide operational traceability.
 

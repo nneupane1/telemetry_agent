@@ -18,6 +18,7 @@ from app.services.api_client import (
     create_action_pack,
     export_pdf,
     fetch_chat_reply,
+    fetch_cohort_list,
     fetch_cohort_interpretation,
     fetch_vin_interpretation,
     list_approvals,
@@ -55,6 +56,22 @@ fleet_tab, evidence_tab, approval_tab, chat_tab = st.tabs(
     ["Fleet", "Evidence", "Approval", "Chat"]
 )
 
+
+@st.cache_data(ttl=60)
+def _load_cohort_options() -> list[str]:
+    try:
+        rows = fetch_cohort_list()
+    except Exception:
+        return []
+
+    options = []
+    for row in rows:
+        cohort_id = str(row.get("cohort_id", "")).strip()
+        if cohort_id:
+            options.append(cohort_id)
+
+    return options
+
 with fleet_tab:
     col1, col2 = st.columns([2, 1])
     with col1:
@@ -74,27 +91,31 @@ with fleet_tab:
                     st.error(f"VIN lookup failed: {exc}")
 
     with col2:
-        cohort_id = st.selectbox(
-            "Cohort",
-            options=["EURO6-DIESEL", "EURO5-DIESEL", "EV-FLEET"],
-        )
-        if st.button("Load Cohort Snapshot"):
-            with st.spinner("Loading cohort summary..."):
-                try:
-                    cohort = fetch_cohort_interpretation(cohort_id)
-                    st.metric(
-                        "Anomaly Count",
-                        len(cohort.get("anomalies", [])),
-                    )
-                    st.json(
-                        {
-                            "cohort_id": cohort.get("cohort_id"),
-                            "summary": cohort.get("summary"),
-                            "risk_distribution": cohort.get("risk_distribution"),
-                        }
-                    )
-                except Exception as exc:
-                    st.error(f"Cohort lookup failed: {exc}")
+        cohort_options = _load_cohort_options()
+        if not cohort_options:
+            st.info("No cohorts available from /cohort/list.")
+        else:
+            cohort_id = st.selectbox(
+                "Cohort",
+                options=cohort_options,
+            )
+            if st.button("Load Cohort Snapshot"):
+                with st.spinner("Loading cohort summary..."):
+                    try:
+                        cohort = fetch_cohort_interpretation(cohort_id)
+                        st.metric(
+                            "Anomaly Count",
+                            len(cohort.get("anomalies", [])),
+                        )
+                        st.json(
+                            {
+                                "cohort_id": cohort.get("cohort_id"),
+                                "summary": cohort.get("summary"),
+                                "risk_distribution": cohort.get("risk_distribution"),
+                            }
+                        )
+                    except Exception as exc:
+                        st.error(f"Cohort lookup failed: {exc}")
 
     if st.session_state.vin_data:
         st.subheader("VIN Summary")
@@ -222,4 +243,3 @@ with chat_tab:
             st.write(reply)
         except Exception as exc:
             st.error(f"Chat request failed: {exc}")
-

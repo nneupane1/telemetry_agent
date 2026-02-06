@@ -19,7 +19,7 @@ from app.agents.evidence_agent import EvidenceAgent
 from app.agents.vin_explainer_agent import VinExplainerAgent
 
 from app.models.action_pack import ActionPack
-from app.models.cohort import CohortInterpretation
+from app.models.cohort import CohortInterpretation, CohortListItem
 from app.models.vin import VinInterpretation
 
 from app.services.mart_loader import MartLoader
@@ -173,6 +173,13 @@ class GenAIInterpreterService:
         )
 
         return interpretation
+
+    def list_cohorts(self) -> list[CohortListItem]:
+        """
+        Return available cohort registry entries for dashboard selectors.
+        """
+        rows = self._mart_loader.list_cohorts()
+        return [CohortListItem(**row) for row in rows]
 
     # ------------------------------------------------------------------
     # Action Pack Assembly

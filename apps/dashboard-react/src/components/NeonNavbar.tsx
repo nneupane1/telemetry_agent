@@ -21,7 +21,7 @@ export default function NeonNavbar() {
         <nav className="flex items-center gap-2 text-sm">
           <NavItem href="/" icon={<Activity size={15} />} label="Overview" />
           <NavItem href="/vin/WVWZZZ1KZ6W000001" icon={<Truck size={15} />} label="VIN Lab" />
-          <NavItem href="/cohort/EURO6-DIESEL" icon={<Layers3 size={15} />} label="Cohort Lab" />
+          <NavItem href="/cohort" icon={<Layers3 size={15} />} label="Cohort Lab" />
         </nav>
 
         <div className="chip-cyan">
@@ -52,4 +52,3 @@ function NavItem({
     </Link>
   )
 }
-

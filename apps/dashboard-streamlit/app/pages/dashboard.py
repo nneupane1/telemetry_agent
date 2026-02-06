@@ -10,6 +10,7 @@ from __future__ import annotations
 import streamlit as st
 
 from app.services.api_client import (
+    fetch_cohort_list,
     fetch_vin_interpretation,
     fetch_cohort_interpretation,
 )
@@ -39,33 +40,27 @@ render_vin_lookup()
 
 st.divider()
 
-# ------------------------------------------------------------
-# Cohort Snapshot (example cohorts, live-backed)
-# ------------------------------------------------------------
-
-# NOTE:
-# In real deployments, this list typically comes from:
-# - a predefined cohort registry
-# - or a backend endpoint (/cohort/list)
-#
-# For now, we demonstrate with known cohort IDs.
-
-cohort_ids = [
-    "EURO6-DIESEL",
-    "EURO5-DIESEL",
-    "EV-FLEET",
-]
-
 cohorts = []
 
 with st.spinner("Loading cohort snapshot…"):
-    for cid in cohort_ids:
+    try:
+        cohort_items = fetch_cohort_list()
+    except Exception:
+        cohort_items = []
+
+    for item in cohort_items:
+        cid = str(item.get("cohort_id", "")).strip()
+        if not cid:
+            continue
         try:
             data = fetch_cohort_interpretation(cid)
 
             cohorts.append({
                 "cohort_id": cid,
-                "description": f"Fleet cohort: {cid}",
+                "description": (
+                    item.get("cohort_description")
+                    or f"Fleet cohort: {cid}"
+                ),
                 "risk_level": (
                     "HIGH"
                     if data.get("anomalies")

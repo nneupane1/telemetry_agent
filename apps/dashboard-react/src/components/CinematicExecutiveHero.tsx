@@ -62,7 +62,7 @@ export default function CinematicExecutiveHero({
           <Link href="/vin/WVWZZZ1KZ6W000001" className="chip-amber">
             Open VIN Intelligence <ArrowRight size={14} className="ml-1" />
           </Link>
-          <Link href="/cohort/EURO6-DIESEL" className="chip-mint">
+          <Link href="/cohort" className="chip-mint">
             Open Cohort Intelligence <ArrowRight size={14} className="ml-1" />
           </Link>
           <button

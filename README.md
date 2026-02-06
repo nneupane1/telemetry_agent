@@ -140,6 +140,7 @@ Backend entrypoint: `apps/backend-api/app/main.py`
 - `GET /cohort/{cohort_id}`
 - `POST /action-pack/`
 - `POST /chat`
+- `WS /chat/ws` (low-latency fallback transport for chat)
 - `POST /export/pdf`
 - `POST /approval`
 - `GET /approval`
@@ -205,6 +206,7 @@ Stop:
 ```
 
 Detailed runbook: `docs/local-k8s-kind.md`
+Phased delivery plan: `docs/phased-implementation.md`
 
 ### Option C: Compose Local-Test Overlay Add-On
 Useful for quick local test cycles while preserving baseline deployment logic.
@@ -255,6 +257,11 @@ Key variables:
   - `FEATURE_ALLOW_DETERMINISTIC_FALLBACK`
   - `FEATURE_PDF`
   - `FEATURE_EMAIL`
+- frontend chat transport:
+  - `NEXT_PUBLIC_CHAT_WS_URL`
+  - `NEXT_PUBLIC_CHAT_REST_LATENCY_THRESHOLD_MS`
+  - `NEXT_PUBLIC_CHAT_REST_BREACH_LIMIT`
+  - `NEXT_PUBLIC_CHAT_WS_TIMEOUT_MS`
 
 ## Development Commands
 From repo root:

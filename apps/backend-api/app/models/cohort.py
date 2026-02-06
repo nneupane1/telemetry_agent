@@ -90,6 +90,43 @@ class CohortAnomaly(BaseModel):
 
 
 # ---------------------------------------------------------------------
+# Cohort Registry Models
+# ---------------------------------------------------------------------
+
+class CohortListItem(BaseModel):
+    """
+    Lightweight cohort descriptor used by dashboard selectors.
+    """
+
+    cohort_id: str = Field(
+        ...,
+        description="Cohort identifier",
+        example="EURO6-DIESEL",
+    )
+    cohort_description: Optional[str] = Field(
+        None,
+        description="Optional cohort display description",
+    )
+
+    class Config:
+        frozen = True
+
+
+class CohortListResponse(BaseModel):
+    """
+    API response envelope for cohort registry listing.
+    """
+
+    cohorts: List[CohortListItem] = Field(
+        default_factory=list,
+        description="Available cohorts for dashboard selection",
+    )
+
+    class Config:
+        frozen = True
+
+
+# ---------------------------------------------------------------------
 # Cohort Interpretation (Root Model)
 # ---------------------------------------------------------------------
 

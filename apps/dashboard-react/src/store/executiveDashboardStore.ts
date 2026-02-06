@@ -1,6 +1,7 @@
 import { create } from "zustand"
 
 import {
+  fetchCohortList,
   fetchCohortInterpretation,
   fetchVinInterpretation,
   VinInterpretation,
@@ -60,8 +61,14 @@ export const useExecutiveDashboardStore = create<ExecutiveDashboardState>((set, 
 
     let cohortSummary = "Cohort interpretation is currently unavailable."
     try {
-      const cohort = await fetchCohortInterpretation("EURO6-DIESEL")
-      cohortSummary = cohort.summary
+      const cohorts = await fetchCohortList()
+      const primaryCohortId = cohorts[0]?.cohort_id
+      if (primaryCohortId) {
+        const cohort = await fetchCohortInterpretation(primaryCohortId)
+        cohortSummary = cohort.summary
+      } else {
+        cohortSummary = "No cohorts are currently available."
+      }
     } catch {
       // Summary fallback is already set.
     }

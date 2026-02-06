@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
-from app.models.cohort import CohortInterpretation
+from app.models.cohort import CohortInterpretation, CohortListResponse
 from app.services.genai_interpreter import GenAIInterpreter
 from app.utils.logger import get_logger, log_event
 
@@ -28,6 +28,39 @@ def get_interpreter() -> GenAIInterpreter:
 # ---------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------
+
+@router.get(
+    "/list",
+    response_model=CohortListResponse,
+    status_code=status.HTTP_200_OK,
+)
+def list_cohorts(
+    x_request_id: str | None = Header(default=None),
+    interpreter: GenAIInterpreter = Depends(get_interpreter),
+) -> CohortListResponse:
+    """
+    List available cohort IDs for dashboard selectors.
+    """
+
+    log_event(
+        logger,
+        "Cohort list API request received",
+    )
+
+    try:
+        _ = x_request_id  # reserved for future request tracing
+        cohorts = interpreter.list_cohorts()
+        return CohortListResponse(cohorts=cohorts)
+    except Exception as exc:
+        log_event(
+            logger,
+            "Cohort list request failed",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load cohort list",
+        ) from exc
+
 
 @router.get(
     "/{cohort_id}",

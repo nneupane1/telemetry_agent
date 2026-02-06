@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.models.vin import VinInterpretation
-from app.models.cohort import CohortInterpretation
+from app.models.cohort import CohortInterpretation, CohortListItem
 from app.services.genai_interpreter import GenAIInterpreter
 from app.utils.config import load_config
 
@@ -147,3 +147,26 @@ def test_generate_chat_reply_cohort_uses_hybrid_selector(monkeypatch):
     interpreter._graph_runner.compose_chat_reply.assert_called_once()
     kwargs = interpreter._graph_runner.compose_chat_reply.call_args.kwargs
     assert kwargs["deterministic_reply"] == "deterministic-cohort-reply"
+
+
+def test_list_cohorts_returns_typed_registry_items(monkeypatch):
+    interpreter = GenAIInterpreter(model_version="test")
+    interpreter._mart_loader.list_cohorts = MagicMock(
+        return_value=[
+            {
+                "cohort_id": "EURO6-DIESEL",
+                "cohort_description": "Euro 6 fleet",
+            },
+            {
+                "cohort_id": "EV-FLEET",
+                "cohort_description": None,
+            },
+        ]
+    )
+
+    result = interpreter.list_cohorts()
+
+    assert len(result) == 2
+    assert all(isinstance(item, CohortListItem) for item in result)
+    assert result[0].cohort_id == "EURO6-DIESEL"
+    assert result[0].cohort_description == "Euro 6 fleet"

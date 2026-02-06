@@ -55,6 +55,16 @@ paths:
         "200":
           description: Chat reply
 
+  /chat/ws:
+    get:
+      summary: WebSocket chat transport (upgrade endpoint)
+      description: |
+        Upgrade this endpoint to WebSocket for low-latency chat fallback.
+        Client messages are JSON payloads with message/context/request_id.
+      responses:
+        "101":
+          description: Switching Protocols
+
   /export/pdf:
     post:
       summary: Export VIN or cohort PDF

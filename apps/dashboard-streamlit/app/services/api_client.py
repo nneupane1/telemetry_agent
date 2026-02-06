@@ -70,6 +70,17 @@ def fetch_cohort_interpretation(cohort_id: str) -> Dict[str, Any]:
     return _request("GET", f"/cohort/{cohort_id}")
 
 
+def fetch_cohort_list() -> List[Dict[str, Any]]:
+    """
+    Fetch available cohort IDs from backend registry.
+    """
+    result = _request("GET", "/cohort/list")
+    cohorts = result.get("cohorts", [])
+    if not isinstance(cohorts, list):
+        raise RuntimeError("Invalid /cohort/list response payload")
+    return cohorts
+
+
 def create_action_pack(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Create an action pack from recommendations.
